@@ -1,0 +1,147 @@
+I want you to generate a complete **CSE Student Portal project** for a college project that can run on **Replit**. The project should include **frontend, backend, database, authentication, dashboards, tables, and graphs**. Please provide it as a **zip file download of the project folder**. 
+
+Here are the full details:
+
+**Project Name:** CSE Student Portal – Attendance, Marks & Library Management  
+**College Name:** Kameshwar Narayan Singh Govt Polytechnic College  
+**Purpose:** Web portal for CSE students and admin to manage attendance, marks, and library resources with modern UI/UX.
+
+---
+
+### **1. Users & Login**
+
+**Roles:**
+- **Admin:** Can manage attendance, marks, library, and generate reports  
+- **Student:** Can view attendance, marks, library resources, and notifications  
+
+**Admin Login Credentials:**
+| Name           | Password   |
+|----------------|-----------|
+| Md Kashif      | KNSGP2023 |
+| Md Shad        | KNSGP2023 |
+| Rajesh Ranjan  | KNSGP2023 |
+| Deepak Kumar   | KNSGP2023 |
+| Rajan Kumar    | KNSGP2023 |
+
+**Student Login:**  
+- Login ID = Roll Number  
+- Password = Student Name  
+
+**Full Student Details (Sample Data for Database):**
+
+| Roll Number | Name |
+|-------------|------------------------|
+| 2023-CSE-01 | Bhaskar Kumar          |
+| 2023-CSE-03 | Subhash Kumar          |
+| 2023-CSE-04 | Prithvi Kumar Singh    |
+| 2023-CSE-05 | Aniket Kumar           |
+| 2023-CSE-06 | Sonu Kumar             |
+| 2023-CSE-07 | Aman Kumar             |
+| 2023-CSE-08 | Deepak Kumar           |
+| 2023-CSE-09 | Neha Rani              |
+| 2023-CSE-12 | Ashutosh Raj           |
+| 2023-CSE-14 | Ayush Kumar            |
+| 2023-CSE-15 | Md Shadwash Alam Shad  |
+| 2023-CSE-16 | Sneh Sikha             |
+| 2023-CSE-17 | Mukesh Gond            |
+| 2023-CSE-18 | Ayush Kumar Mishra     |
+| 2023-CSE-19 | Krishna Kumar          |
+| 2023-CSE-20 | Sadhna Kumari          |
+| 2023-CSE-22 | Abhishek Kumar         |
+| 2023-CSE-23 | Aradhana Suman         |
+| 2023-CSE-26 | Gaurav Kumar           |
+| 2023-CSE-28 | Avinash Kumar          |
+| 2023-CSE-29 | Suraj Kumar            |
+| 2023-CSE-30 | Jyoti Kumari           |
+| 2023-CSE-31 | Tannu Kumari           |
+| 2023-CSE-33 | Sushil Kumar Verma     |
+| 2023-CSE-34 | Shashikant Kumar       |
+| 2023-CSE-35 | Nitish Kumar           |
+| 2023-CSE-38 | Rajan Kumar            |
+| 2023-CSE-40 | Kaushal Kumar          |
+| 2023-CSE-41 | Rajan Kumar            |
+| 2023-CSE-42 | Naveen Kumar           |
+| 2023-CSE-43 | Piyush Prakash         |
+| 2023-CSE-44 | Shailya Singh          |
+| 2023-CSE-45 | Mithilesh Kumar        |
+| 2023-CSE-46 | Rohini Kumari          |
+| 2023-CSE-48 | Anjali Kumari          |
+| 2023-CSE-51 | Md Kashif              |
+| 2023-CSE-54 | Subodh Kumar           |
+| 2023-CSE-55 | Saloni Kumari          |
+| 2023-CSE-56 | Ankit Kumar Ray        |
+
+---
+
+### **2. Modules**
+
+**Admin Module:**
+- Dashboard: Overview stats (attendance %, marks, library books issued)  
+- Attendance Management: Upload via CSV / manual input, update records  
+- Marks Management: Upload marks per subject/test, generate reports  
+- Library Management: Add/update/remove books, track issued/returned  
+- Reports & Analytics: Attendance reports, marks comparison, library usage  
+
+**Student Module:**
+- Dashboard: Attendance %, latest marks, library books, notifications  
+- Attendance Table & Graphs: Bar chart, line chart, pie chart  
+- Marks Table & Graphs: Bar chart comparing student vs class average, line chart for tests  
+- Library Section: Search books, view issued books, featured book cards  
+
+---
+
+### **3. Database**
+Use **Replit DB or PostgreSQL** with these tables:
+
+**Students Table:** roll_no, name, password, attendance, marks, library_books  
+**Admins Table:** admin_name, password  
+**Attendance Table:** roll_no, date, subject, status (P/A)  
+**Marks Table:** roll_no, subject, test_name, marks_obtained, total_marks  
+**Library Table:** book_id, title, author, copies_available  
+**Book Issue Table:** roll_no, book_id, issue_date, return_date  
+
+---
+
+### **4. Frontend**
+- **React.js** with modern UI (TailwindCSS / Bootstrap)  
+- Charts with **Chart.js / Recharts**  
+- Responsive design for desktop & mobile  
+- Login page with toggle for Admin/Student  
+- Dashboard with stats cards, tables, and graphs  
+
+---
+
+### **5. Backend**
+- **Node.js + Express** for APIs  
+- Routes: `/login`, `/attendance`, `/marks`, `/library`  
+- Authentication with session or JWT  
+- Serve frontend via React dev server or build folder  
+
+---
+
+### **6. Graphs & Visualization**
+- **Attendance:** Bar chart per subject, line chart trend, pie chart Present vs Absent  
+- **Marks:** Bar chart per subject, line chart for multiple tests, pie chart for grades  
+- **Library:** Bar chart books issued vs available, pie chart for book usage  
+
+---
+
+### **7. Extras / UI/UX**
+- Rounded cards, hover effects, soft shadows  
+- Notifications for low attendance, overdue books, new marks  
+- PDF download for reports  
+- Dark mode toggle (optional)  
+
+---
+
+### **8. Requirements for Output**
+- Generate the **full project folder** ready for **Replit**  
+- Include **all student & admin data**  
+- Include **sample attendance, marks, and library data**  
+- Include **React frontend + Node.js backend + database setup**  
+- Provide a **downloadable zip file** of the complete project  
+
+---
+
+**Instruction to AI:**  
+Please generate the **entire project code** with all files, folders, and assets so I can directly **upload it to Replit** and run the CSE Student Portal with full functionality.
