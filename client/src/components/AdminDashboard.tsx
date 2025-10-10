@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import AdminSidebar from "./AdminSidebar";
 import StatCard from "./StatCard";
@@ -6,10 +7,16 @@ import AttendanceChart from "./AttendanceChart";
 import MarksChart from "./MarksChart";
 import DataTable from "./DataTable";
 import LibraryBookCard from "./LibraryBookCard";
+import AddStudentDialog from "./AddStudentDialog";
+import AddSubjectDialog from "./AddSubjectDialog";
+import AddBookDialog from "./AddBookDialog";
+import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import { Users, TrendingUp, BookOpen, Award, Plus, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 
 interface AdminDashboardProps {
   adminName: string;
@@ -18,61 +25,114 @@ interface AdminDashboardProps {
 
 export default function AdminDashboard({ adminName, onLogout }: AdminDashboardProps) {
   const [activeSection, setActiveSection] = useState("dashboard");
+  const [showAddStudentDialog, setShowAddStudentDialog] = useState(false);
+  const [showAddSubjectDialog, setShowAddSubjectDialog] = useState(false);
+  const [showAddBookDialog, setShowAddBookDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<any>(null);
+  const [deleteType, setDeleteType] = useState<'student' | 'subject' | 'book' | null>(null);
+  const { toast } = useToast();
 
   const style = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3rem",
   };
 
-  const attendanceData = [
-    { subject: 'Programming in C', present: 32, absent: 7 },
-    { subject: 'Data Structures', present: 35, absent: 4 },
-    { subject: 'DBMS', present: 30, absent: 9 },
-    { subject: 'Web Dev', present: 36, absent: 3 },
-    { subject: 'OS', present: 28, absent: 11 },
-  ];
+  // Fetch students
+  const { data: students = [], refetch: refetchStudents } = useQuery<any[]>({
+    queryKey: ['/api/students'],
+    enabled: activeSection === 'dashboard' || activeSection === 'students',
+  });
 
-  const marksData = [
-    { test: 'Test 1', student: 75, classAvg: 68 },
-    { test: 'Test 2', student: 82, classAvg: 72 },
-    { test: 'Mid-term', student: 78, classAvg: 74 },
-  ];
+  // Fetch subjects
+  const { data: subjects = [], refetch: refetchSubjects } = useQuery<any[]>({
+    queryKey: ['/api/subjects'],
+    enabled: activeSection === 'dashboard' || activeSection === 'subjects',
+  });
+
+  // Fetch library books
+  const { data: books = [], refetch: refetchBooks } = useQuery<any[]>({
+    queryKey: ['/api/library/books'],
+    enabled: activeSection === 'library',
+  });
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async ({ type, id }: { type: string; id: number }) => {
+      const endpoints: Record<string, string> = {
+        student: '/api/students',
+        subject: '/api/subjects',
+        book: '/api/library/books',
+      };
+      return await apiRequest('DELETE', `${endpoints[type]}/${id}`);
+    },
+    onSuccess: (_, { type }) => {
+      toast({
+        title: "Success",
+        description: `${type.charAt(0).toUpperCase() + type.slice(1)} deleted successfully`,
+      });
+      if (type === 'student') refetchStudents();
+      if (type === 'subject') refetchSubjects();
+      if (type === 'book') refetchBooks();
+      setShowDeleteDialog(false);
+      setItemToDelete(null);
+      setDeleteType(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDelete = (type: 'student' | 'subject' | 'book', item: any) => {
+    setDeleteType(type);
+    setItemToDelete(item);
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = () => {
+    if (itemToDelete && deleteType) {
+      deleteMutation.mutate({ type: deleteType, id: itemToDelete.id });
+    }
+  };
 
   const studentsColumns = [
     { key: 'rollNo', label: 'Roll Number' },
     { key: 'name', label: 'Name' },
     { 
-      key: 'attendance', 
+      key: 'attendancePercentage', 
       label: 'Attendance',
-      render: (value: number) => (
-        <Badge variant={value >= 75 ? 'default' : 'destructive'}>
-          {value}%
-        </Badge>
-      )
+      render: (value: string) => {
+        const percentage = parseFloat(value);
+        return (
+          <Badge variant={percentage >= 75 ? 'default' : 'destructive'}>
+            {value}%
+          </Badge>
+        );
+      }
     },
     { key: 'avgMarks', label: 'Avg Marks' },
     { key: 'booksIssued', label: 'Books' },
-  ];
-
-  const studentsData = [
-    { rollNo: '2023-CSE-01', name: 'Bhaskar Kumar', attendance: 85, avgMarks: 78, booksIssued: 2 },
-    { rollNo: '2023-CSE-03', name: 'Subhash Kumar', attendance: 72, avgMarks: 82, booksIssued: 1 },
-    { rollNo: '2023-CSE-04', name: 'Prithvi Kumar Singh', attendance: 90, avgMarks: 88, booksIssued: 3 },
-    { rollNo: '2023-CSE-05', name: 'Aniket Kumar', attendance: 68, avgMarks: 75, booksIssued: 0 },
   ];
 
   const subjectsColumns = [
     { key: 'code', label: 'Subject Code' },
     { key: 'name', label: 'Subject Name' },
     { key: 'instructor', label: 'Instructor' },
-    { key: 'students', label: 'Students' },
   ];
 
-  const subjectsData = [
-    { code: 'CSE101', name: 'Programming in C', instructor: 'Dr. Sharma', students: 39 },
-    { code: 'CSE102', name: 'Data Structures', instructor: 'Prof. Kumar', students: 39 },
-    { code: 'CSE103', name: 'DBMS', instructor: 'Dr. Singh', students: 39 },
-  ];
+  // Calculate dashboard stats
+  const totalStudents = students.length;
+  const avgAttendance = students.length > 0 
+    ? (students.reduce((sum: number, s: any) => sum + parseFloat(s.attendancePercentage || 0), 0) / students.length).toFixed(1)
+    : '0.0';
+  const avgMarks = students.length > 0
+    ? (students.reduce((sum: number, s: any) => sum + parseFloat(s.avgMarks || 0), 0) / students.length).toFixed(1)
+    : '0.0';
+  const totalBooksIssued = students.reduce((sum: number, s: any) => sum + (s.booksIssued || 0), 0);
 
   const renderContent = () => {
     switch (activeSection) {
@@ -80,14 +140,10 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
         return (
           <div className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <StatCard title="Total Students" value="39" icon={Users} description="Active enrollments" />
-              <StatCard title="Avg Attendance" value="85.2%" icon={TrendingUp} trend={{ value: 3.5, isPositive: true }} />
-              <StatCard title="Books Issued" value="127" icon={BookOpen} description="Currently checked out" />
-              <StatCard title="Avg Marks" value="78.4" icon={Award} trend={{ value: 2.1, isPositive: true }} />
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <AttendanceChart data={attendanceData} />
-              <MarksChart data={marksData} />
+              <StatCard title="Total Students" value={totalStudents.toString()} icon={Users} description="Active enrollments" />
+              <StatCard title="Avg Attendance" value={`${avgAttendance}%`} icon={TrendingUp} />
+              <StatCard title="Books Issued" value={totalBooksIssued.toString()} icon={BookOpen} description="Currently checked out" />
+              <StatCard title="Avg Marks" value={avgMarks} icon={Award} />
             </div>
           </div>
         );
@@ -100,7 +156,10 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
                 <h2 className="text-2xl font-bold">Student Management</h2>
                 <p className="text-muted-foreground">Manage all student records</p>
               </div>
-              <Button data-testid="button-add-student">
+              <Button 
+                onClick={() => setShowAddStudentDialog(true)}
+                data-testid="button-add-student"
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Student
               </Button>
@@ -109,10 +168,10 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
               title="All Students"
               description="Complete list of enrolled students"
               columns={studentsColumns}
-              data={studentsData}
+              data={students}
               actions={true}
-              onEdit={(row) => console.log('Edit student:', row)}
-              onDelete={(row) => console.log('Delete student:', row)}
+              onEdit={(row) => toast({ title: "Edit", description: "Edit functionality coming soon" })}
+              onDelete={(row) => handleDelete('student', row)}
             />
           </div>
         );
@@ -125,7 +184,10 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
                 <h2 className="text-2xl font-bold">Subject Management</h2>
                 <p className="text-muted-foreground">Manage all subjects and courses</p>
               </div>
-              <Button data-testid="button-add-subject">
+              <Button 
+                onClick={() => setShowAddSubjectDialog(true)}
+                data-testid="button-add-subject"
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Subject
               </Button>
@@ -134,10 +196,10 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
               title="All Subjects"
               description="Complete list of subjects"
               columns={subjectsColumns}
-              data={subjectsData}
+              data={subjects}
               actions={true}
-              onEdit={(row) => console.log('Edit subject:', row)}
-              onDelete={(row) => console.log('Delete subject:', row)}
+              onEdit={(row) => toast({ title: "Edit", description: "Edit functionality coming soon" })}
+              onDelete={(row) => handleDelete('subject', row)}
             />
           </div>
         );
@@ -161,7 +223,12 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
                 </Button>
               </div>
             </div>
-            <AttendanceChart data={attendanceData} />
+            <Card>
+              <CardHeader>
+                <CardTitle>Attendance functionality</CardTitle>
+                <CardDescription>Detailed attendance management coming soon</CardDescription>
+              </CardHeader>
+            </Card>
           </div>
         );
 
@@ -184,7 +251,12 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
                 </Button>
               </div>
             </div>
-            <MarksChart data={marksData} />
+            <Card>
+              <CardHeader>
+                <CardTitle>Marks functionality</CardTitle>
+                <CardDescription>Detailed marks management coming soon</CardDescription>
+              </CardHeader>
+            </Card>
           </div>
         );
 
@@ -196,32 +268,34 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
                 <h2 className="text-2xl font-bold">Library Management</h2>
                 <p className="text-muted-foreground">Manage books and issue records</p>
               </div>
-              <Button data-testid="button-add-book">
+              <Button 
+                onClick={() => setShowAddBookDialog(true)}
+                data-testid="button-add-book"
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Book
               </Button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <LibraryBookCard
-                title="Introduction to Algorithms"
-                author="Thomas H. Cormen"
-                copiesAvailable={3}
-                totalCopies={5}
-                onIssue={() => console.log('Issue book')}
-              />
-              <LibraryBookCard
-                title="Database System Concepts"
-                author="Abraham Silberschatz"
-                copiesAvailable={0}
-                totalCopies={4}
-              />
-              <LibraryBookCard
-                title="Operating System Concepts"
-                author="Abraham Silberschatz"
-                copiesAvailable={2}
-                totalCopies={3}
-                onIssue={() => console.log('Issue book')}
-              />
+              {books.map((book: any) => (
+                <div key={book.id} className="relative">
+                  <LibraryBookCard
+                    title={book.title}
+                    author={book.author}
+                    copiesAvailable={book.copiesAvailable}
+                    totalCopies={book.totalCopies}
+                    onIssue={() => toast({ title: "Issue", description: "Issue book functionality coming soon" })}
+                  />
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="absolute top-2 right-2"
+                    onClick={() => handleDelete('book', book)}
+                  >
+                    <span className="text-xs">×</span>
+                  </Button>
+                </div>
+              ))}
             </div>
           </div>
         );
@@ -233,26 +307,12 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
               <h2 className="text-2xl font-bold">Reports & Analytics</h2>
               <p className="text-muted-foreground">Comprehensive insights and reports</p>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Attendance Report</CardTitle>
-                  <CardDescription>Overall attendance statistics</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <AttendanceChart data={attendanceData} />
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Performance Report</CardTitle>
-                  <CardDescription>Class performance trends</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <MarksChart data={marksData} />
-                </CardContent>
-              </Card>
-            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Reports functionality</CardTitle>
+                <CardDescription>Detailed reports and analytics coming soon</CardDescription>
+              </CardHeader>
+            </Card>
           </div>
         );
 
@@ -284,6 +344,33 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
           </main>
         </div>
       </div>
+
+      <AddStudentDialog
+        open={showAddStudentDialog}
+        onOpenChange={setShowAddStudentDialog}
+        onSuccess={refetchStudents}
+      />
+
+      <AddSubjectDialog
+        open={showAddSubjectDialog}
+        onOpenChange={setShowAddSubjectDialog}
+        onSuccess={refetchSubjects}
+      />
+
+      <AddBookDialog
+        open={showAddBookDialog}
+        onOpenChange={setShowAddBookDialog}
+        onSuccess={refetchBooks}
+      />
+
+      <DeleteConfirmDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        onConfirm={confirmDelete}
+        title={`Delete ${deleteType}?`}
+        description={`Are you sure you want to delete this ${deleteType}? This action cannot be undone.`}
+        isLoading={deleteMutation.isPending}
+      />
     </SidebarProvider>
   );
 }

@@ -5,9 +5,11 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GraduationCap, UserCog } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 interface LoginPageProps {
-  onLogin: (role: 'admin' | 'student', username: string) => void;
+  onLogin: (role: 'admin' | 'student', user: any) => void;
 }
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
@@ -15,32 +17,79 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const [adminPassword, setAdminPassword] = useState("");
   const [studentRollNo, setStudentRollNo] = useState("");
   const [studentPassword, setStudentPassword] = useState("");
-  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
-  const handleAdminLogin = (e: React.FormEvent) => {
+  const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     
     if (!adminUsername || !adminPassword) {
-      setError("Please fill in all fields");
+      toast({
+        title: "Error",
+        description: "Please fill in all fields",
+        variant: "destructive",
+      });
       return;
     }
     
-    console.log("Admin login:", adminUsername);
-    onLogin('admin', adminUsername);
+    setIsLoading(true);
+    try {
+      const response: any = await apiRequest("POST", "/api/login", {
+        username: adminUsername,
+        password: adminPassword,
+        role: 'admin'
+      });
+
+      toast({
+        title: "Success",
+        description: "Logged in successfully",
+      });
+      onLogin('admin', response.user);
+    } catch (error: any) {
+      toast({
+        title: "Login Failed",
+        description: error.message || "Invalid credentials",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleStudentLogin = (e: React.FormEvent) => {
+  const handleStudentLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     
     if (!studentRollNo || !studentPassword) {
-      setError("Please fill in all fields");
+      toast({
+        title: "Error",
+        description: "Please fill in all fields",
+        variant: "destructive",
+      });
       return;
     }
     
-    console.log("Student login:", studentRollNo);
-    onLogin('student', studentRollNo);
+    setIsLoading(true);
+    try {
+      const response: any = await apiRequest("POST", "/api/login", {
+        username: studentRollNo,
+        password: studentPassword,
+        role: 'student'
+      });
+
+      toast({
+        title: "Success",
+        description: "Logged in successfully",
+      });
+      onLogin('student', response.user);
+    } catch (error: any) {
+      toast({
+        title: "Login Failed",
+        description: error.message || "Invalid credentials",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -84,6 +133,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                       placeholder="e.g., 2023-CSE-01"
                       value={studentRollNo}
                       onChange={(e) => setStudentRollNo(e.target.value)}
+                      disabled={isLoading}
                     />
                   </div>
                   <div className="space-y-2">
@@ -95,11 +145,11 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                       placeholder="Enter your name"
                       value={studentPassword}
                       onChange={(e) => setStudentPassword(e.target.value)}
+                      disabled={isLoading}
                     />
                   </div>
-                  {error && <p className="text-sm text-error" data-testid="text-error">{error}</p>}
-                  <Button type="submit" className="w-full" data-testid="button-student-login">
-                    Login as Student
+                  <Button type="submit" className="w-full" data-testid="button-student-login" disabled={isLoading}>
+                    {isLoading ? "Logging in..." : "Login as Student"}
                   </Button>
                 </form>
               </CardContent>
@@ -122,6 +172,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                       placeholder="Enter your name"
                       value={adminUsername}
                       onChange={(e) => setAdminUsername(e.target.value)}
+                      disabled={isLoading}
                     />
                   </div>
                   <div className="space-y-2">
@@ -133,11 +184,11 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                       placeholder="Enter password"
                       value={adminPassword}
                       onChange={(e) => setAdminPassword(e.target.value)}
+                      disabled={isLoading}
                     />
                   </div>
-                  {error && <p className="text-sm text-error" data-testid="text-error">{error}</p>}
-                  <Button type="submit" className="w-full" data-testid="button-admin-login">
-                    Login as Admin
+                  <Button type="submit" className="w-full" data-testid="button-admin-login" disabled={isLoading}>
+                    {isLoading ? "Logging in..." : "Login as Admin"}
                   </Button>
                 </form>
               </CardContent>

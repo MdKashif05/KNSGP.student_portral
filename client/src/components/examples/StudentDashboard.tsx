@@ -5,6 +5,7 @@ export default function StudentDashboardExample() {
     <StudentDashboard
       studentName="Bhaskar Kumar"
       rollNo="2023-CSE-01"
+      studentId={1}
       onLogout={() => console.log('Logout')}
     />
   );

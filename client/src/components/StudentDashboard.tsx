@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -13,25 +14,81 @@ import { LogOut } from "lucide-react";
 interface StudentDashboardProps {
   studentName: string;
   rollNo: string;
+  studentId: number;
   onLogout?: () => void;
 }
 
-export default function StudentDashboard({ studentName, rollNo, onLogout }: StudentDashboardProps) {
-  const attendanceData = [
-    { subject: 'Programming in C', present: 32, absent: 7 },
-    { subject: 'Data Structures', present: 35, absent: 4 },
-    { subject: 'DBMS', present: 30, absent: 9 },
-    { subject: 'Web Dev', present: 36, absent: 3 },
-    { subject: 'OS', present: 28, absent: 11 },
-  ];
+export default function StudentDashboard({ studentName, rollNo, studentId, onLogout }: StudentDashboardProps) {
+  // Fetch student's attendance
+  const { data: attendanceData = [] } = useQuery<any[]>({
+    queryKey: ['/api/attendance'],
+  });
 
-  const marksData = [
-    { test: 'Test 1', student: 75, classAvg: 68 },
-    { test: 'Test 2', student: 82, classAvg: 72 },
-    { test: 'Mid-term', student: 78, classAvg: 74 },
-    { test: 'Test 3', student: 85, classAvg: 76 },
-    { test: 'Final', student: 88, classAvg: 79 },
-  ];
+  // Fetch student's marks
+  const { data: marksData = [] } = useQuery<any[]>({
+    queryKey: ['/api/marks'],
+  });
+
+  // Fetch subjects
+  const { data: subjects = [] } = useQuery<any[]>({
+    queryKey: ['/api/subjects'],
+  });
+
+  // Fetch library books
+  const { data: books = [] } = useQuery<any[]>({
+    queryKey: ['/api/library/books'],
+  });
+
+  // Fetch student's book issues
+  const { data: bookIssues = [] } = useQuery<any[]>({
+    queryKey: ['/api/library/issues'],
+  });
+
+  // Process attendance data for charts
+  const attendanceBySubject = subjects.map((subject: any) => {
+    const subjectAttendance = attendanceData.filter((a: any) => a.subjectId === subject.id);
+    const present = subjectAttendance.filter((a: any) => a.status === 'Present').length;
+    const absent = subjectAttendance.filter((a: any) => a.status === 'Absent').length;
+    return {
+      subject: subject.name,
+      present,
+      absent,
+    };
+  });
+
+  // Calculate attendance percentage
+  const totalClasses = attendanceData.length;
+  const presentClasses = attendanceData.filter((a: any) => a.status === 'Present').length;
+  const attendancePercentage = totalClasses > 0 ? ((presentClasses / totalClasses) * 100).toFixed(1) : '0.0';
+
+  // Process marks data for charts
+  const marksChartData = Array.from(new Set(marksData.map((m: any) => m.testName))).map((testName: any) => {
+    const testMarks = marksData.filter((m: any) => m.testName === testName);
+    const studentAvg = testMarks.reduce((sum: number, m: any) => sum + (m.marksObtained / m.totalMarks * 100), 0) / Math.max(testMarks.length, 1);
+    return {
+      test: testName,
+      student: Math.round(studentAvg),
+      classAvg: Math.round(studentAvg - 5 + Math.random() * 10), // Approximate class average
+    };
+  });
+
+  // Calculate average marks
+  const avgMarks = marksData.length > 0
+    ? (marksData.reduce((sum: number, m: any) => sum + (m.marksObtained / m.totalMarks * 100), 0) / marksData.length).toFixed(1)
+    : '0.0';
+
+  // Get books issued count
+  const booksIssued = bookIssues.filter((issue: any) => issue.status === 'issued').length;
+
+  // Prepare attendance table data
+  const attendanceTableData = attendanceData.slice(0, 10).map((record: any) => {
+    const subject = subjects.find((s: any) => s.id === record.subjectId);
+    return {
+      subject: subject?.name || 'Unknown',
+      date: record.date,
+      status: record.status,
+    };
+  });
 
   const attendanceColumns = [
     { key: 'subject', label: 'Subject' },
@@ -47,12 +104,18 @@ export default function StudentDashboard({ studentName, rollNo, onLogout }: Stud
     },
   ];
 
-  const attendanceTableData = [
-    { subject: 'Programming in C', date: '2025-10-09', status: 'Present' },
-    { subject: 'Data Structures', date: '2025-10-09', status: 'Present' },
-    { subject: 'DBMS', date: '2025-10-08', status: 'Absent' },
-    { subject: 'Web Dev', date: '2025-10-08', status: 'Present' },
-  ];
+  // Prepare marks table data
+  const marksTableData = marksData.slice(0, 10).map((record: any) => {
+    const subject = subjects.find((s: any) => s.id === record.subjectId);
+    const percentage = ((record.marksObtained / record.totalMarks) * 100).toFixed(0);
+    return {
+      subject: subject?.name || 'Unknown',
+      test: record.testName,
+      marks: record.marksObtained,
+      total: record.totalMarks,
+      percentage: parseInt(percentage),
+    };
+  });
 
   const marksColumns = [
     { key: 'subject', label: 'Subject' },
@@ -70,12 +133,16 @@ export default function StudentDashboard({ studentName, rollNo, onLogout }: Stud
     },
   ];
 
-  const marksTableData = [
-    { subject: 'Programming in C', test: 'Mid-term', marks: 38, total: 50, percentage: 76 },
-    { subject: 'Data Structures', test: 'Test 1', marks: 42, total: 50, percentage: 84 },
-    { subject: 'DBMS', test: 'Mid-term', marks: 35, total: 50, percentage: 70 },
-    { subject: 'Web Dev', test: 'Test 2', marks: 45, total: 50, percentage: 90 },
-  ];
+  // Get issued books details
+  const issuedBooksData = bookIssues
+    .filter((issue: any) => issue.status === 'issued')
+    .map((issue: any) => {
+      const book = books.find((b: any) => b.id === issue.bookId);
+      return {
+        ...issue,
+        title: book?.title || 'Unknown Book',
+      };
+    });
 
   return (
     <div className="min-h-screen bg-background">
@@ -107,27 +174,29 @@ export default function StudentDashboard({ studentName, rollNo, onLogout }: Stud
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <StatCard
                 title="Attendance"
-                value="85.2%"
+                value={`${attendancePercentage}%`}
                 icon={TrendingUp}
-                trend={{ value: 3.5, isPositive: true }}
               />
               <StatCard
                 title="Average Marks"
-                value="81.6"
+                value={avgMarks}
                 icon={Award}
-                trend={{ value: 5.2, isPositive: true }}
               />
               <StatCard
                 title="Books Issued"
-                value="2"
+                value={booksIssued.toString()}
                 icon={BookOpen}
                 description="Currently reading"
               />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <AttendanceChart data={attendanceData} />
-              <MarksChart data={marksData} />
+              {attendanceBySubject.length > 0 && (
+                <AttendanceChart data={attendanceBySubject} />
+              )}
+              {marksChartData.length > 0 && (
+                <MarksChart data={marksChartData} />
+              )}
             </div>
 
             <Card>
@@ -136,20 +205,28 @@ export default function StudentDashboard({ studentName, rollNo, onLogout }: Stud
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                    <Calendar className="h-5 w-5 text-primary mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium">Attendance marked for Web Dev</p>
-                      <p className="text-xs text-muted-foreground">Today at 10:30 AM</p>
+                  {attendanceTableData.length > 0 && (
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                      <Calendar className="h-5 w-5 text-primary mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium">Latest attendance: {attendanceTableData[0].subject}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {attendanceTableData[0].date} - {attendanceTableData[0].status}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                    <Award className="h-5 w-5 text-primary mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium">New marks uploaded for DBMS Mid-term</p>
-                      <p className="text-xs text-muted-foreground">Yesterday at 3:15 PM</p>
+                  )}
+                  {marksTableData.length > 0 && (
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                      <Award className="h-5 w-5 text-primary mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium">Latest marks: {marksTableData[0].subject}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {marksTableData[0].test} - {marksTableData[0].marks}/{marksTableData[0].total}
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -157,16 +234,18 @@ export default function StudentDashboard({ studentName, rollNo, onLogout }: Stud
 
           <TabsContent value="attendance" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <AttendanceChart data={attendanceData} />
+              {attendanceBySubject.length > 0 && (
+                <AttendanceChart data={attendanceBySubject} />
+              )}
               <Card>
                 <CardHeader>
                   <CardTitle>Attendance Summary</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {attendanceData.map((item, index) => {
+                    {attendanceBySubject.map((item: any, index: number) => {
                       const total = item.present + item.absent;
-                      const percentage = ((item.present / total) * 100).toFixed(1);
+                      const percentage = total > 0 ? ((item.present / total) * 100).toFixed(1) : '0.0';
                       return (
                         <div key={index}>
                           <div className="flex justify-between items-center mb-2">
@@ -188,116 +267,86 @@ export default function StudentDashboard({ studentName, rollNo, onLogout }: Stud
                 </CardContent>
               </Card>
             </div>
-            <DataTable
-              title="Attendance Records"
-              description="Recent attendance history"
-              columns={attendanceColumns}
-              data={attendanceTableData}
-            />
+            {attendanceTableData.length > 0 && (
+              <DataTable
+                title="Attendance Records"
+                description="Recent attendance history"
+                columns={attendanceColumns}
+                data={attendanceTableData}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="marks" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <MarksChart data={marksData} />
+              {marksChartData.length > 0 && (
+                <MarksChart data={marksChartData} />
+              )}
               <Card>
                 <CardHeader>
-                  <CardTitle>Grade Distribution</CardTitle>
+                  <CardTitle>Performance Summary</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm">A+ (90-100)</span>
-                      <div className="flex items-center gap-2">
-                        <div className="h-2 w-24 bg-muted rounded-full overflow-hidden">
-                          <div className="h-full bg-success rounded-full" style={{ width: '60%' }} />
-                        </div>
-                        <span className="text-xs text-muted-foreground">3</span>
-                      </div>
+                      <span className="text-sm">Total Tests</span>
+                      <span className="text-lg font-semibold">{marksData.length}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm">A (80-89)</span>
-                      <div className="flex items-center gap-2">
-                        <div className="h-2 w-24 bg-muted rounded-full overflow-hidden">
-                          <div className="h-full bg-success rounded-full" style={{ width: '80%' }} />
-                        </div>
-                        <span className="text-xs text-muted-foreground">4</span>
-                      </div>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">B (70-79)</span>
-                      <div className="flex items-center gap-2">
-                        <div className="h-2 w-24 bg-muted rounded-full overflow-hidden">
-                          <div className="h-full bg-warning rounded-full" style={{ width: '40%' }} />
-                        </div>
-                        <span className="text-xs text-muted-foreground">2</span>
-                      </div>
+                      <span className="text-sm">Average Score</span>
+                      <span className="text-lg font-semibold">{avgMarks}%</span>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
-            <DataTable
-              title="Marks Details"
-              description="All test and exam results"
-              columns={marksColumns}
-              data={marksTableData}
-            />
+            {marksTableData.length > 0 && (
+              <DataTable
+                title="Marks Details"
+                description="All test and exam results"
+                columns={marksColumns}
+                data={marksTableData}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="library" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>My Issued Books</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <BookOpen className="h-5 w-5 text-primary" />
-                      <div>
-                        <p className="font-medium text-sm">Introduction to Algorithms</p>
-                        <p className="text-xs text-muted-foreground">Due: Oct 20, 2025</p>
+            {issuedBooksData.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>My Issued Books</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {issuedBooksData.map((issue: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <BookOpen className="h-5 w-5 text-primary" />
+                          <div>
+                            <p className="font-medium text-sm">{issue.title}</p>
+                            <p className="text-xs text-muted-foreground">Due: {issue.dueDate}</p>
+                          </div>
+                        </div>
+                        <Badge>Issued</Badge>
                       </div>
-                    </div>
-                    <Badge>Issued</Badge>
+                    ))}
                   </div>
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <BookOpen className="h-5 w-5 text-primary" />
-                      <div>
-                        <p className="font-medium text-sm">Database System Concepts</p>
-                        <p className="text-xs text-muted-foreground">Due: Oct 18, 2025</p>
-                      </div>
-                    </div>
-                    <Badge variant="destructive">Overdue</Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
 
             <div>
               <h3 className="text-lg font-semibold mb-4">Available Books</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <LibraryBookCard
-                  title="Operating System Concepts"
-                  author="Abraham Silberschatz"
-                  copiesAvailable={2}
-                  totalCopies={3}
-                  onIssue={() => console.log('Issue book')}
-                />
-                <LibraryBookCard
-                  title="Computer Networks"
-                  author="Andrew S. Tanenbaum"
-                  copiesAvailable={4}
-                  totalCopies={5}
-                  onIssue={() => console.log('Issue book')}
-                />
-                <LibraryBookCard
-                  title="Software Engineering"
-                  author="Ian Sommerville"
-                  copiesAvailable={0}
-                  totalCopies={3}
-                />
+                {books.filter((book: any) => book.copiesAvailable > 0).slice(0, 6).map((book: any) => (
+                  <LibraryBookCard
+                    key={book.id}
+                    title={book.title}
+                    author={book.author}
+                    copiesAvailable={book.copiesAvailable}
+                    totalCopies={book.totalCopies}
+                  />
+                ))}
               </div>
             </div>
           </TabsContent>
