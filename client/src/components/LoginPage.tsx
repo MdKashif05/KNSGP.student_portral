@@ -181,6 +181,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                         onChange={(e) => setStudentRollNo(e.target.value)}
                         disabled={isLoading}
                         className="h-11"
+                        autoComplete="username"
                       />
                     </div>
                     <div className="space-y-2">
@@ -194,6 +195,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                         onChange={(e) => setStudentPassword(e.target.value)}
                         disabled={isLoading}
                         className="h-11"
+                        autoComplete="current-password"
                       />
                     </div>
                     <Button 
@@ -222,6 +224,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                         onChange={(e) => setAdminUsername(e.target.value)}
                         disabled={isLoading}
                         className="h-11"
+                        autoComplete="username"
                       />
                     </div>
                     <div className="space-y-2">
@@ -235,6 +238,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                         onChange={(e) => setAdminPassword(e.target.value)}
                         disabled={isLoading}
                         className="h-11"
+                        autoComplete="current-password"
                       />
                     </div>
                     <Button 
