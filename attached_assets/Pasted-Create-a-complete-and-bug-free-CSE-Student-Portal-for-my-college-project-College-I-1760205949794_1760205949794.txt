@@ -1,0 +1,117 @@
+Create a **complete and bug-free CSE Student Portal** for my college project.
+
+---
+
+### 🏫 College Info
+**College Name:** Kameshwar Narayan Singh Govt Polytechnic College  
+**Department:** Computer Science & Engineering (CSE)  
+**Project Title:** CSE Student Portal – Attendance, Marks, Library & Admin Management System  
+**Logo:** Use the logo file I have provided (place it small, top-left of sidebar on every page).
+
+---
+
+### 👥 User Roles
+There are two user roles:
+1. **Admin**
+2. **Student**
+
+---
+
+### 🔐 Login System
+- Dual-tab login interface (Admin / Student)
+- Clean and modern UI with validation
+- **For Students:**
+  - Login ID = Roll Number  
+  - Password = Student Name (case-insensitive)
+  - Invalid Roll Number → show “Invalid Username”
+  - Invalid Password → show “Incorrect Password”
+- **For Admins:**
+  - Login ID = Admin Name  
+  - Password = `KNSGP2023`
+  - Invalid Username or Password should show proper error
+- Protect all admin routes & pages with session/JWT authentication
+
+---
+
+### 👨‍💼 Admin Details
+Admins:
+- Md Kashif  
+- Md Shad  
+- Rajesh Ranjan  
+- Deepak Kumar  
+- Rajan Kumar  
+
+All share password: **KNSGP2023**
+
+---
+
+### 👨‍🎓 Student Data
+Use a sample student list (or empty table initially) that can be managed by admin.  
+Admin should have the ability to **add, edit, or delete** any student record.
+
+---
+
+### 🧠 Admin Full Access (Superuser Controls)
+The Admin should have **complete control over the portal**, including full CRUD (Create, Read, Update, Delete) capabilities for all modules:
+
+#### 🔹 Students
+- Add new students  
+- Edit student details (name, roll number, password)  
+- Delete students  
+- View all student details in a table with search and filter options  
+
+#### 🔹 Subjects
+- Add subjects  
+- Edit subject names  
+- Delete subjects  
+
+#### 🔹 Attendance
+- Add attendance manually or via CSV upload  
+- Edit or delete attendance records  
+- View attendance summary & reports  
+
+#### 🔹 Marks
+- Add or upload marks (CSV or form input)
+- Edit marks  
+- Delete marks  
+- View performance graphs  
+
+#### 🔹 Library
+- Add, edit, and delete books  
+- Include a **book icon** for each book card  
+- Track issued/returned books  
+- Search books by name/author  
+
+#### 🔹 Reports
+- View attendance %, marks, and library analytics
+- Download or print reports (optional)
+
+#### 🔹 Admin Management
+- Only existing admins can add new admins  
+- New admins must have unique names and default password `KNSGP2023`  
+
+---
+
+### 🎨 UI / UX Design Requirements
+- Use **React.js + TailwindCSS** for a modern and responsive interface
+- Sidebar navigation (with logo in top-left corner)
+- Use **blue-based color scheme**
+- Color Codes:
+  - ✅ Green → Good performance/high attendance
+  - ⚠️ Orange → Medium/warning
+  - ❌ Red → Low attendance/alerts
+- Rounded cards, hover effects, consistent padding and spacing
+- Use **Chart.js or Recharts** for all graphs
+- Fully responsive (desktop & mobile)
+- Include dark mode toggle (optional)
+- Notification alerts for updates, deletions, and login errors
+- Add hover tooltips for chart values
+- Confirm dialog before delete operations
+- All tables should be searchable and paginated
+
+---
+
+### ⚙️ Backend Functionality
+Use **Node.js + Express + Replit DB (or PostgreSQL)** for the backend.
+
+Routes should include:
