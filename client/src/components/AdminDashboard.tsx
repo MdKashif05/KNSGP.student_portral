@@ -62,31 +62,31 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
   // Fetch students
   const { data: students = [], refetch: refetchStudents } = useQuery<any[]>({
     queryKey: ['/api/students'],
-    enabled: activeSection === 'dashboard' || activeSection === 'students',
+    enabled: activeSection === 'dashboard' || activeSection === 'students' || activeSection === 'reports',
   });
 
   // Fetch subjects
   const { data: subjects = [], refetch: refetchSubjects } = useQuery<any[]>({
     queryKey: ['/api/subjects'],
-    enabled: activeSection === 'dashboard' || activeSection === 'subjects',
+    enabled: activeSection === 'dashboard' || activeSection === 'subjects' || activeSection === 'reports',
   });
 
   // Fetch library books
   const { data: books = [], refetch: refetchBooks } = useQuery<any[]>({
     queryKey: ['/api/library/books'],
-    enabled: activeSection === 'library',
+    enabled: activeSection === 'library' || activeSection === 'reports',
   });
 
   // Fetch attendance records
   const { data: attendance = [], refetch: refetchAttendance } = useQuery<any[]>({
     queryKey: ['/api/attendance'],
-    enabled: activeSection === 'attendance',
+    enabled: activeSection === 'attendance' || activeSection === 'reports',
   });
 
   // Fetch marks records
   const { data: marks = [], refetch: refetchMarks } = useQuery<any[]>({
     queryKey: ['/api/marks'],
-    enabled: activeSection === 'marks',
+    enabled: activeSection === 'marks' || activeSection === 'reports',
   });
 
   // Fetch notices
@@ -533,18 +533,242 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
         );
 
       case "reports":
+        // Calculate analytics
+        const reportsStudentCount = students.length;
+        const reportsSubjectCount = subjects.length;
+        const reportsBooksCount = books.length;
+        const reportsAttendanceRecords = attendance.length;
+        const reportsMarksRecords = marks.length;
+        
+        // Calculate overall attendance percentage
+        const totalPresentDays = attendance.reduce((sum: number, a: any) => sum + (a.presentDays || 0), 0);
+        const totalDaysCount = attendance.reduce((sum: number, a: any) => sum + (a.totalDays || 0), 0);
+        const overallAttendance = totalDaysCount > 0 
+          ? ((totalPresentDays / totalDaysCount) * 100).toFixed(1)
+          : '0.0';
+        
+        // Calculate average marks percentage
+        const totalMarksObtained = marks.reduce((sum: number, m: any) => sum + (m.marksObtained || 0), 0);
+        const totalMarksTotal = marks.reduce((sum: number, m: any) => sum + (m.totalMarks || 0), 0);
+        const reportsAvgMarks = totalMarksTotal > 0 
+          ? ((totalMarksObtained / totalMarksTotal) * 100).toFixed(1)
+          : '0.0';
+        
+        // Subject-wise performance
+        const subjectPerformance = subjects.map((subject: any) => {
+          const subjectMarks = marks.filter((m: any) => m.subjectId === subject.id);
+          const subjectAttendance = attendance.filter((a: any) => a.subjectId === subject.id);
+          
+          const subjectMarksObtained = subjectMarks.reduce((sum: number, m: any) => sum + (m.marksObtained || 0), 0);
+          const subjectMarksTotal = subjectMarks.reduce((sum: number, m: any) => sum + (m.totalMarks || 0), 0);
+          const avgSubjectMarks = subjectMarksTotal > 0
+            ? ((subjectMarksObtained / subjectMarksTotal) * 100).toFixed(1)
+            : '0.0';
+          
+          const subjectPresentDays = subjectAttendance.reduce((sum: number, a: any) => sum + (a.presentDays || 0), 0);
+          const subjectTotalDays = subjectAttendance.reduce((sum: number, a: any) => sum + (a.totalDays || 0), 0);
+          const subjectAttendancePerc = subjectTotalDays > 0
+            ? ((subjectPresentDays / subjectTotalDays) * 100).toFixed(1)
+            : '0.0';
+          
+          return {
+            name: subject.name,
+            code: subject.code,
+            avgMarks: avgSubjectMarks,
+            attendance: subjectAttendancePerc,
+          };
+        });
+        
+        // Student performance ranking
+        const studentPerformance = students.map((student: any) => {
+          const studentMarks = marks.filter((m: any) => m.studentId === student.id);
+          const studentAttendance = attendance.filter((a: any) => a.studentId === student.id);
+          
+          const studentMarksObtained = studentMarks.reduce((sum: number, m: any) => sum + (m.marksObtained || 0), 0);
+          const studentMarksTotal = studentMarks.reduce((sum: number, m: any) => sum + (m.totalMarks || 0), 0);
+          const avgStudentMarks = studentMarksTotal > 0
+            ? (studentMarksObtained / studentMarksTotal) * 100
+            : 0;
+          
+          const studentPresentDays = studentAttendance.reduce((sum: number, a: any) => sum + (a.presentDays || 0), 0);
+          const studentTotalDays = studentAttendance.reduce((sum: number, a: any) => sum + (a.totalDays || 0), 0);
+          const studentAttendancePerc = studentTotalDays > 0
+            ? (studentPresentDays / studentTotalDays) * 100
+            : 0;
+          
+          return {
+            rollNo: student.rollNo,
+            name: student.name,
+            avgMarks: avgStudentMarks,
+            attendance: studentAttendancePerc,
+          };
+        }).sort((a, b) => b.avgMarks - a.avgMarks);
+        
+        const topPerformers = studentPerformance.slice(0, 5);
+        const bottomPerformers = studentPerformance.slice(-5).reverse();
+        
+        // Attendance distribution
+        const goodAttendance = students.filter((student: any) => {
+          const studentAttendance = attendance.filter((a: any) => a.studentId === student.id);
+          const presentDays = studentAttendance.reduce((sum: number, a: any) => sum + (a.presentDays || 0), 0);
+          const totalDays = studentAttendance.reduce((sum: number, a: any) => sum + (a.totalDays || 0), 0);
+          const perc = totalDays > 0 ? (presentDays / totalDays) * 100 : 0;
+          return perc >= 80;
+        }).length;
+        
+        const averageAttendance = students.filter((student: any) => {
+          const studentAttendance = attendance.filter((a: any) => a.studentId === student.id);
+          const presentDays = studentAttendance.reduce((sum: number, a: any) => sum + (a.presentDays || 0), 0);
+          const totalDays = studentAttendance.reduce((sum: number, a: any) => sum + (a.totalDays || 0), 0);
+          const perc = totalDays > 0 ? (presentDays / totalDays) * 100 : 0;
+          return perc >= 60 && perc < 80;
+        }).length;
+        
+        const poorAttendance = students.filter((student: any) => {
+          const studentAttendance = attendance.filter((a: any) => a.studentId === student.id);
+          const presentDays = studentAttendance.reduce((sum: number, a: any) => sum + (a.presentDays || 0), 0);
+          const totalDays = studentAttendance.reduce((sum: number, a: any) => sum + (a.totalDays || 0), 0);
+          const perc = totalDays > 0 ? (presentDays / totalDays) * 100 : 0;
+          return perc < 60;
+        }).length;
+        
         return (
           <div className="space-y-6">
             <div>
               <h2 className="text-2xl font-bold">Reports & Analytics</h2>
-              <p className="text-muted-foreground">Comprehensive insights and reports</p>
+              <p className="text-muted-foreground">Comprehensive insights and performance metrics</p>
             </div>
+            
+            {/* Overview Statistics */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard title="Total Students" value={reportsStudentCount.toString()} icon={Users} />
+              <StatCard title="Overall Attendance" value={`${overallAttendance}%`} icon={TrendingUp} />
+              <StatCard title="Average Marks" value={`${reportsAvgMarks}%`} icon={Award} />
+              <StatCard title="Total Books" value={reportsBooksCount.toString()} icon={BookOpen} />
+            </div>
+            
+            {/* Subject Performance */}
+            {subjectPerformance.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Subject-wise Performance</CardTitle>
+                  <CardDescription>Average marks and attendance by subject</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {subjectPerformance.map((subject: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex-1">
+                          <p className="font-medium">{subject.name} ({subject.code})</p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="text-right">
+                            <p className="text-sm text-muted-foreground">Avg Marks</p>
+                            <p className="font-semibold">{subject.avgMarks}%</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm text-muted-foreground">Attendance</p>
+                            <Badge variant={
+                              parseFloat(subject.attendance) >= 80 ? 'default' : 
+                              parseFloat(subject.attendance) >= 60 ? 'secondary' : 
+                              'destructive'
+                            }>
+                              {subject.attendance}%
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            
+            {/* Attendance Distribution */}
             <Card>
               <CardHeader>
-                <CardTitle>Reports functionality</CardTitle>
-                <CardDescription>Detailed reports and analytics coming soon</CardDescription>
+                <CardTitle>Attendance Distribution</CardTitle>
+                <CardDescription>Student distribution by attendance percentage</CardDescription>
               </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Badge variant="default">≥ 80%</Badge>
+                      <span className="text-sm">Good Attendance</span>
+                    </div>
+                    <span className="font-semibold">{goodAttendance} students</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Badge variant="secondary">60-79%</Badge>
+                      <span className="text-sm">Average Attendance</span>
+                    </div>
+                    <span className="font-semibold">{averageAttendance} students</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Badge variant="destructive">&lt; 60%</Badge>
+                      <span className="text-sm">Poor Attendance</span>
+                    </div>
+                    <span className="font-semibold">{poorAttendance} students</span>
+                  </div>
+                </div>
+              </CardContent>
             </Card>
+            
+            {/* Top & Bottom Performers */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {topPerformers.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Top Performers</CardTitle>
+                    <CardDescription>Students with highest average marks</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {topPerformers.map((student: any, index: number) => (
+                        <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div>
+                            <p className="font-medium">{student.name}</p>
+                            <p className="text-xs text-muted-foreground">{student.rollNo}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold">{student.avgMarks.toFixed(1)}%</p>
+                            <p className="text-xs text-muted-foreground">{student.attendance.toFixed(1)}% attendance</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+              
+              {bottomPerformers.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Need Attention</CardTitle>
+                    <CardDescription>Students requiring academic support</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {bottomPerformers.map((student: any, index: number) => (
+                        <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div>
+                            <p className="font-medium">{student.name}</p>
+                            <p className="text-xs text-muted-foreground">{student.rollNo}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold">{student.avgMarks.toFixed(1)}%</p>
+                            <p className="text-xs text-muted-foreground">{student.attendance.toFixed(1)}% attendance</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           </div>
         );
 
