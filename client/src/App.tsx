@@ -18,6 +18,34 @@ function App() {
     id: null,
     name: null,
   });
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  // Check for existing session on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const response = await fetch('/api/me', {
+          credentials: 'include',
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setUser({
+            role: data.role,
+            id: data.id,
+            name: data.name,
+            rollNo: data.rollNo || null,
+          });
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
 
   const handleLogin = (role: 'admin' | 'student', userData: any) => {
     setUser({ 
@@ -36,6 +64,17 @@ function App() {
     }
     setUser({ role: null, id: null, name: null });
   };
+
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <QueryClientProvider client={queryClient}>

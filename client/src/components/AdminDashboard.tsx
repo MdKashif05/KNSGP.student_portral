@@ -10,8 +10,11 @@ import LibraryBookCard from "./LibraryBookCard";
 import AddStudentDialog from "./AddStudentDialog";
 import AddSubjectDialog from "./AddSubjectDialog";
 import AddBookDialog from "./AddBookDialog";
+import EditStudentDialog from "./EditStudentDialog";
+import EditSubjectDialog from "./EditSubjectDialog";
+import EditBookDialog from "./EditBookDialog";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
-import { Users, TrendingUp, BookOpen, Award, Plus, Upload } from "lucide-react";
+import { Users, TrendingUp, BookOpen, Award, Plus, Upload, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,7 +31,11 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
   const [showAddStudentDialog, setShowAddStudentDialog] = useState(false);
   const [showAddSubjectDialog, setShowAddSubjectDialog] = useState(false);
   const [showAddBookDialog, setShowAddBookDialog] = useState(false);
+  const [showEditStudentDialog, setShowEditStudentDialog] = useState(false);
+  const [showEditSubjectDialog, setShowEditSubjectDialog] = useState(false);
+  const [showEditBookDialog, setShowEditBookDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [itemToEdit, setItemToEdit] = useState<any>(null);
   const [itemToDelete, setItemToDelete] = useState<any>(null);
   const [deleteType, setDeleteType] = useState<'student' | 'subject' | 'book' | null>(null);
   const { toast } = useToast();
@@ -86,6 +93,13 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
       });
     },
   });
+
+  const handleEdit = (type: 'student' | 'subject' | 'book', item: any) => {
+    setItemToEdit(item);
+    if (type === 'student') setShowEditStudentDialog(true);
+    if (type === 'subject') setShowEditSubjectDialog(true);
+    if (type === 'book') setShowEditBookDialog(true);
+  };
 
   const handleDelete = (type: 'student' | 'subject' | 'book', item: any) => {
     setDeleteType(type);
@@ -170,7 +184,7 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
               columns={studentsColumns}
               data={students}
               actions={true}
-              onEdit={(row) => toast({ title: "Edit", description: "Edit functionality coming soon" })}
+              onEdit={(row) => handleEdit('student', row)}
               onDelete={(row) => handleDelete('student', row)}
             />
           </div>
@@ -198,7 +212,7 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
               columns={subjectsColumns}
               data={subjects}
               actions={true}
-              onEdit={(row) => toast({ title: "Edit", description: "Edit functionality coming soon" })}
+              onEdit={(row) => handleEdit('subject', row)}
               onDelete={(row) => handleDelete('subject', row)}
             />
           </div>
@@ -286,14 +300,26 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
                     totalCopies={book.totalCopies}
                     onIssue={() => toast({ title: "Issue", description: "Issue book functionality coming soon" })}
                   />
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="absolute top-2 right-2"
-                    onClick={() => handleDelete('book', book)}
-                  >
-                    <span className="text-xs">×</span>
-                  </Button>
+                  <div className="absolute top-2 right-2 flex gap-1">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() => handleEdit('book', book)}
+                      data-testid={`button-edit-book-${book.id}`}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() => handleDelete('book', book)}
+                      data-testid={`button-delete-book-${book.id}`}
+                    >
+                      <span className="text-xs">×</span>
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -360,6 +386,27 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
       <AddBookDialog
         open={showAddBookDialog}
         onOpenChange={setShowAddBookDialog}
+        onSuccess={refetchBooks}
+      />
+
+      <EditStudentDialog
+        open={showEditStudentDialog}
+        onOpenChange={setShowEditStudentDialog}
+        student={itemToEdit}
+        onSuccess={refetchStudents}
+      />
+
+      <EditSubjectDialog
+        open={showEditSubjectDialog}
+        onOpenChange={setShowEditSubjectDialog}
+        subject={itemToEdit}
+        onSuccess={refetchSubjects}
+      />
+
+      <EditBookDialog
+        open={showEditBookDialog}
+        onOpenChange={setShowEditBookDialog}
+        book={itemToEdit}
         onSuccess={refetchBooks}
       />
 
