@@ -17,6 +17,7 @@ import {
   Calendar, 
   Award, 
   BookOpen, 
+  Bell,
   BarChart3,
   GraduationCap,
   LogOut
@@ -37,6 +38,7 @@ const menuItems = [
   { title: "Attendance", icon: Calendar, id: "attendance" },
   { title: "Marks", icon: Award, id: "marks" },
   { title: "Library", icon: BookOpen, id: "library" },
+  { title: "Notices", icon: Bell, id: "notices" },
   { title: "Reports", icon: BarChart3, id: "reports" },
 ];
 

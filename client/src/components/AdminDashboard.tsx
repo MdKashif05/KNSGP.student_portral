@@ -18,6 +18,8 @@ import EditAttendanceDialog from "./EditAttendanceDialog";
 import AddMarksDialog from "./AddMarksDialog";
 import EditMarksDialog from "./EditMarksDialog";
 import UploadMarksCSVDialog from "./UploadMarksCSVDialog";
+import AddNoticeDialog from "./AddNoticeDialog";
+import EditNoticeDialog from "./EditNoticeDialog";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import { Users, TrendingUp, BookOpen, Award, Plus, Upload, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -44,10 +46,12 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
   const [showAddMarksDialog, setShowAddMarksDialog] = useState(false);
   const [showEditMarksDialog, setShowEditMarksDialog] = useState(false);
   const [showUploadCSVDialog, setShowUploadCSVDialog] = useState(false);
+  const [showAddNoticeDialog, setShowAddNoticeDialog] = useState(false);
+  const [showEditNoticeDialog, setShowEditNoticeDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [itemToEdit, setItemToEdit] = useState<any>(null);
   const [itemToDelete, setItemToDelete] = useState<any>(null);
-  const [deleteType, setDeleteType] = useState<'student' | 'subject' | 'book' | 'attendance' | 'marks' | null>(null);
+  const [deleteType, setDeleteType] = useState<'student' | 'subject' | 'book' | 'attendance' | 'marks' | 'notice' | null>(null);
   const { toast } = useToast();
 
   const style = {
@@ -85,6 +89,12 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
     enabled: activeSection === 'marks',
   });
 
+  // Fetch notices
+  const { data: notices = [], refetch: refetchNotices } = useQuery<any[]>({
+    queryKey: ['/api/notices'],
+    enabled: activeSection === 'notices',
+  });
+
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async ({ type, id }: { type: string; id: number }) => {
@@ -94,6 +104,7 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
         book: '/api/library/books',
         attendance: '/api/attendance',
         marks: '/api/marks',
+        notice: '/api/notices',
       };
       return await apiRequest('DELETE', `${endpoints[type]}/${id}`);
     },
@@ -107,6 +118,7 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
       if (type === 'book') refetchBooks();
       if (type === 'attendance') refetchAttendance();
       if (type === 'marks') refetchMarks();
+      if (type === 'notice') refetchNotices();
       setShowDeleteDialog(false);
       setItemToDelete(null);
       setDeleteType(null);
@@ -120,16 +132,17 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
     },
   });
 
-  const handleEdit = (type: 'student' | 'subject' | 'book' | 'attendance' | 'marks', item: any) => {
+  const handleEdit = (type: 'student' | 'subject' | 'book' | 'attendance' | 'marks' | 'notice', item: any) => {
     setItemToEdit(item);
     if (type === 'student') setShowEditStudentDialog(true);
     if (type === 'subject') setShowEditSubjectDialog(true);
     if (type === 'book') setShowEditBookDialog(true);
     if (type === 'attendance') setShowEditAttendanceDialog(true);
     if (type === 'marks') setShowEditMarksDialog(true);
+    if (type === 'notice') setShowEditNoticeDialog(true);
   };
 
-  const handleDelete = (type: 'student' | 'subject' | 'book' | 'attendance' | 'marks', item: any) => {
+  const handleDelete = (type: 'student' | 'subject' | 'book' | 'attendance' | 'marks' | 'notice', item: any) => {
     setDeleteType(type);
     setItemToDelete(item);
     setShowDeleteDialog(true);
@@ -271,6 +284,25 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
           {value}
         </Badge>
       )
+    },
+  ];
+
+  const noticesColumns = [
+    { key: 'title', label: 'Title' },
+    { key: 'message', label: 'Message' },
+    { 
+      key: 'priority', 
+      label: 'Priority',
+      render: (value: string) => (
+        <Badge variant={value === 'high' ? 'destructive' : value === 'normal' ? 'default' : 'secondary'}>
+          {value.toUpperCase()}
+        </Badge>
+      )
+    },
+    { 
+      key: 'createdAt', 
+      label: 'Created',
+      render: (value: string) => new Date(value).toLocaleDateString()
     },
   ];
 
@@ -472,6 +504,34 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
           </div>
         );
 
+      case "notices":
+        return (
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-bold">Notice Management</h2>
+                <p className="text-muted-foreground">Send and manage notices for students</p>
+              </div>
+              <Button 
+                onClick={() => setShowAddNoticeDialog(true)}
+                data-testid="button-add-notice"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Notice
+              </Button>
+            </div>
+            <DataTable
+              title="All Notices"
+              description="Student notices and announcements"
+              columns={noticesColumns}
+              data={notices}
+              actions={true}
+              onEdit={(row) => handleEdit('notice', row)}
+              onDelete={(row) => handleDelete('notice', row)}
+            />
+          </div>
+        );
+
       case "reports":
         return (
           <div className="space-y-6">
@@ -586,6 +646,19 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
         open={showUploadCSVDialog}
         onOpenChange={setShowUploadCSVDialog}
         onSuccess={refetchMarks}
+      />
+
+      <AddNoticeDialog
+        open={showAddNoticeDialog}
+        onOpenChange={setShowAddNoticeDialog}
+        onSuccess={refetchNotices}
+      />
+
+      <EditNoticeDialog
+        open={showEditNoticeDialog}
+        onOpenChange={setShowEditNoticeDialog}
+        notice={itemToEdit}
+        onSuccess={refetchNotices}
       />
 
       <DeleteConfirmDialog
