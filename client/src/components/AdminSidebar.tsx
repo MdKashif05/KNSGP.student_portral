@@ -44,9 +44,11 @@ export default function AdminSidebar({ activeItem = "dashboard", onNavigate, onL
     <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border p-4">
         <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-sidebar-primary flex items-center justify-center">
-            <GraduationCap className="h-5 w-5 text-sidebar-primary-foreground" />
-          </div>
+          <img 
+            src="/attached_assets/WhatsApp Image 2025-10-11 at 23.32.21_1760206203929.jpeg"
+            alt="KNSGP College Logo"
+            className="h-10 w-10 rounded-lg object-contain"
+          />
           <div>
             <p className="text-sm font-semibold text-sidebar-foreground">CSE Portal</p>
             <p className="text-xs text-sidebar-foreground/60">Admin Panel</p>
