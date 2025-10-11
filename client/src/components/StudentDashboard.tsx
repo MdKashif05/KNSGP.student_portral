@@ -7,7 +7,7 @@ import AttendanceChart from "./AttendanceChart";
 import MarksChart from "./MarksChart";
 import LibraryBookCard from "./LibraryBookCard";
 import DataTable from "./DataTable";
-import { TrendingUp, Award, BookOpen, Calendar } from "lucide-react";
+import { TrendingUp, Award, BookOpen, Calendar, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
 
@@ -42,6 +42,11 @@ export default function StudentDashboard({ studentName, rollNo, studentId, onLog
   // Fetch student's book issues
   const { data: bookIssues = [] } = useQuery<any[]>({
     queryKey: ['/api/library/issues'],
+  });
+
+  // Fetch notices
+  const { data: notices = [] } = useQuery<any[]>({
+    queryKey: ['/api/notices'],
   });
 
   // Filter attendance data for this student
@@ -195,6 +200,7 @@ export default function StudentDashboard({ studentName, rollNo, studentId, onLog
             <TabsTrigger value="attendance" data-testid="tab-attendance">Attendance</TabsTrigger>
             <TabsTrigger value="marks" data-testid="tab-marks">Marks</TabsTrigger>
             <TabsTrigger value="library" data-testid="tab-library">Library</TabsTrigger>
+            <TabsTrigger value="notices" data-testid="tab-notices">Notices</TabsTrigger>
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6">
@@ -376,6 +382,47 @@ export default function StudentDashboard({ studentName, rollNo, studentId, onLog
                 ))}
               </div>
             </div>
+          </TabsContent>
+
+          <TabsContent value="notices" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Notice Board</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {notices.length > 0 ? (
+                  <div className="space-y-4">
+                    {notices.map((notice: any) => (
+                      <div key={notice.id} className="p-4 border rounded-lg" data-testid={`notice-${notice.id}`}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Bell className="h-4 w-4 text-primary" />
+                              <h4 className="font-semibold text-base" data-testid={`notice-title-${notice.id}`}>{notice.title}</h4>
+                            </div>
+                            <p className="text-sm text-muted-foreground mb-3" data-testid={`notice-message-${notice.id}`}>{notice.message}</p>
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                              <span>{new Date(notice.createdAt).toLocaleDateString()}</span>
+                              <Badge 
+                                variant={notice.priority === 'high' ? 'destructive' : notice.priority === 'normal' ? 'default' : 'secondary'}
+                                data-testid={`notice-priority-${notice.id}`}
+                              >
+                                {notice.priority.toUpperCase()}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground" data-testid="status-no-notices">
+                    <Bell className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                    <p data-testid="text-no-notices">No notices available</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </main>
