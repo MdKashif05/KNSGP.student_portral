@@ -3,9 +3,8 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 
 interface MarksChartProps {
   data: Array<{
-    test: string;
-    student: number;
-    classAvg: number;
+    month: string;
+    percentage: number;
   }>;
 }
 
@@ -14,14 +13,14 @@ export default function MarksChart({ data }: MarksChartProps) {
     <Card>
       <CardHeader>
         <CardTitle>Marks Trend</CardTitle>
-        <CardDescription>Your performance vs class average over time</CardDescription>
+        <CardDescription>Monthly performance percentage over time</CardDescription>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={data}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
             <XAxis 
-              dataKey="test" 
+              dataKey="month" 
               className="text-xs"
               tick={{ fill: 'hsl(var(--muted-foreground))' }}
             />
@@ -40,19 +39,11 @@ export default function MarksChart({ data }: MarksChartProps) {
             <Legend />
             <Line 
               type="monotone" 
-              dataKey="student" 
+              dataKey="percentage" 
               stroke="hsl(var(--chart-1))" 
               strokeWidth={2}
-              name="Your Marks"
+              name="Percentage"
               dot={{ fill: 'hsl(var(--chart-1))', r: 4 }}
-            />
-            <Line 
-              type="monotone" 
-              dataKey="classAvg" 
-              stroke="hsl(var(--chart-3))" 
-              strokeWidth={2}
-              name="Class Average"
-              dot={{ fill: 'hsl(var(--chart-3))', r: 4 }}
             />
           </LineChart>
         </ResponsiveContainer>

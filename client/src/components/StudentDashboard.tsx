@@ -44,90 +44,117 @@ export default function StudentDashboard({ studentName, rollNo, studentId, onLog
     queryKey: ['/api/library/issues'],
   });
 
-  // Process attendance data for charts
+  // Filter attendance data for this student
+  const studentAttendance = attendanceData.filter((a: any) => a.studentId === studentId);
+
+  // Process attendance data for charts - monthly data
   const attendanceBySubject = subjects.map((subject: any) => {
-    const subjectAttendance = attendanceData.filter((a: any) => a.subjectId === subject.id);
-    const present = subjectAttendance.filter((a: any) => a.status === 'Present').length;
-    const absent = subjectAttendance.filter((a: any) => a.status === 'Absent').length;
+    const subjectAttendance = studentAttendance.filter((a: any) => a.subjectId === subject.id);
+    const avgPercentage = subjectAttendance.length > 0 
+      ? subjectAttendance.reduce((sum: number, a: any) => sum + a.percentage, 0) / subjectAttendance.length
+      : 0;
     return {
       subject: subject.name,
-      present,
-      absent,
+      percentage: Math.round(avgPercentage),
     };
   });
 
-  // Calculate attendance percentage
-  const totalClasses = attendanceData.length;
-  const presentClasses = attendanceData.filter((a: any) => a.status === 'Present').length;
-  const attendancePercentage = totalClasses > 0 ? ((presentClasses / totalClasses) * 100).toFixed(1) : '0.0';
+  // Calculate overall attendance percentage
+  const attendancePercentage = studentAttendance.length > 0
+    ? (studentAttendance.reduce((sum: number, a: any) => sum + a.percentage, 0) / studentAttendance.length).toFixed(1)
+    : '0.0';
 
-  // Process marks data for charts
-  const marksChartData = Array.from(new Set(marksData.map((m: any) => m.testName))).map((testName: any) => {
-    const testMarks = marksData.filter((m: any) => m.testName === testName);
-    const studentAvg = testMarks.reduce((sum: number, m: any) => sum + (m.marksObtained / m.totalMarks * 100), 0) / Math.max(testMarks.length, 1);
+  // Filter marks data for this student
+  const studentMarks = marksData.filter((m: any) => m.studentId === studentId);
+
+  // Process marks data for charts - monthly data
+  const marksChartData = Array.from(new Set(studentMarks.map((m: any) => m.month))).map((month: any) => {
+    const monthMarks = studentMarks.filter((m: any) => m.month === month);
+    const avgPercentage = monthMarks.length > 0
+      ? monthMarks.reduce((sum: number, m: any) => sum + m.percentage, 0) / monthMarks.length
+      : 0;
     return {
-      test: testName,
-      student: Math.round(studentAvg),
-      classAvg: Math.round(studentAvg - 5 + Math.random() * 10), // Approximate class average
+      month: month,
+      percentage: Math.round(avgPercentage),
     };
   });
 
   // Calculate average marks
-  const avgMarks = marksData.length > 0
-    ? (marksData.reduce((sum: number, m: any) => sum + (m.marksObtained / m.totalMarks * 100), 0) / marksData.length).toFixed(1)
+  const avgMarks = studentMarks.length > 0
+    ? (studentMarks.reduce((sum: number, m: any) => sum + m.percentage, 0) / studentMarks.length).toFixed(1)
     : '0.0';
 
   // Get books issued count
   const booksIssued = bookIssues.filter((issue: any) => issue.status === 'issued').length;
 
-  // Prepare attendance table data
-  const attendanceTableData = attendanceData.slice(0, 10).map((record: any) => {
+  // Prepare attendance table data - monthly records
+  const attendanceTableData = studentAttendance.slice(0, 10).map((record: any) => {
     const subject = subjects.find((s: any) => s.id === record.subjectId);
     return {
       subject: subject?.name || 'Unknown',
-      date: record.date,
+      month: record.month,
+      presentDays: record.presentDays,
+      totalDays: record.totalDays,
+      percentage: record.percentage,
       status: record.status,
     };
   });
 
   const attendanceColumns = [
     { key: 'subject', label: 'Subject' },
-    { key: 'date', label: 'Date' },
+    { key: 'month', label: 'Month' },
+    { key: 'presentDays', label: 'Present Days' },
+    { key: 'totalDays', label: 'Total Days' },
+    { 
+      key: 'percentage', 
+      label: 'Percentage',
+      render: (value: number) => `${value.toFixed(1)}%`
+    },
     { 
       key: 'status', 
       label: 'Status',
       render: (value: string) => (
-        <Badge variant={value === 'Present' ? 'default' : 'destructive'}>
+        <Badge variant={value === 'Good' ? 'default' : value === 'Average' ? 'secondary' : 'destructive'}>
           {value}
         </Badge>
       )
     },
   ];
 
-  // Prepare marks table data
-  const marksTableData = marksData.slice(0, 10).map((record: any) => {
+  // Prepare marks table data - monthly records
+  const marksTableData = studentMarks.slice(0, 10).map((record: any) => {
     const subject = subjects.find((s: any) => s.id === record.subjectId);
-    const percentage = ((record.marksObtained / record.totalMarks) * 100).toFixed(0);
     return {
       subject: subject?.name || 'Unknown',
+      month: record.month,
       test: record.testName,
       marks: record.marksObtained,
       total: record.totalMarks,
-      percentage: parseInt(percentage),
+      percentage: record.percentage,
+      grade: record.grade,
     };
   });
 
   const marksColumns = [
     { key: 'subject', label: 'Subject' },
+    { key: 'month', label: 'Month' },
     { key: 'test', label: 'Test' },
-    { key: 'marks', label: 'Marks Obtained' },
-    { key: 'total', label: 'Total Marks' },
+    { 
+      key: 'marks', 
+      label: 'Marks',
+      render: (value: number, row: any) => `${value} / ${row.total}`
+    },
     { 
       key: 'percentage', 
       label: 'Percentage',
-      render: (value: number) => (
-        <Badge variant={value >= 75 ? 'default' : value >= 50 ? 'secondary' : 'destructive'}>
-          {value}%
+      render: (value: number) => `${value.toFixed(1)}%`
+    },
+    { 
+      key: 'grade', 
+      label: 'Grade',
+      render: (value: string) => (
+        <Badge variant={['A+', 'A'].includes(value) ? 'default' : ['B+', 'B'].includes(value) ? 'secondary' : value === 'C' ? 'outline' : 'destructive'}>
+          {value}
         </Badge>
       )
     },
@@ -211,7 +238,7 @@ export default function StudentDashboard({ studentName, rollNo, studentId, onLog
                       <div>
                         <p className="text-sm font-medium">Latest attendance: {attendanceTableData[0].subject}</p>
                         <p className="text-xs text-muted-foreground">
-                          {attendanceTableData[0].date} - {attendanceTableData[0].status}
+                          {attendanceTableData[0].month} - {attendanceTableData[0].percentage.toFixed(1)}% ({attendanceTableData[0].status})
                         </p>
                       </div>
                     </div>
@@ -222,7 +249,7 @@ export default function StudentDashboard({ studentName, rollNo, studentId, onLog
                       <div>
                         <p className="text-sm font-medium">Latest marks: {marksTableData[0].subject}</p>
                         <p className="text-xs text-muted-foreground">
-                          {marksTableData[0].test} - {marksTableData[0].marks}/{marksTableData[0].total}
+                          {marksTableData[0].month} - {marksTableData[0].test} ({marksTableData[0].grade})
                         </p>
                       </div>
                     </div>
@@ -244,13 +271,13 @@ export default function StudentDashboard({ studentName, rollNo, studentId, onLog
                 <CardContent>
                   <div className="space-y-4">
                     {attendanceBySubject.map((item: any, index: number) => {
-                      const total = item.present + item.absent;
-                      const percentage = total > 0 ? ((item.present / total) * 100).toFixed(1) : '0.0';
+                      const percentage = item.percentage;
+                      const variant = percentage >= 80 ? 'default' : percentage >= 60 ? 'secondary' : 'destructive';
                       return (
                         <div key={index}>
                           <div className="flex justify-between items-center mb-2">
                             <span className="text-sm font-medium">{item.subject}</span>
-                            <Badge variant={Number(percentage) >= 75 ? 'default' : 'destructive'}>
+                            <Badge variant={variant}>
                               {percentage}%
                             </Badge>
                           </div>

@@ -4,8 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 interface AttendanceChartProps {
   data: Array<{
     subject: string;
-    present: number;
-    absent: number;
+    percentage: number;
   }>;
 }
 
@@ -14,7 +13,7 @@ export default function AttendanceChart({ data }: AttendanceChartProps) {
     <Card>
       <CardHeader>
         <CardTitle>Attendance by Subject</CardTitle>
-        <CardDescription>Present vs Absent comparison across all subjects</CardDescription>
+        <CardDescription>Average monthly attendance percentage across subjects</CardDescription>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
@@ -28,6 +27,7 @@ export default function AttendanceChart({ data }: AttendanceChartProps) {
             <YAxis 
               className="text-xs"
               tick={{ fill: 'hsl(var(--muted-foreground))' }}
+              domain={[0, 100]}
             />
             <Tooltip 
               contentStyle={{ 
@@ -37,8 +37,7 @@ export default function AttendanceChart({ data }: AttendanceChartProps) {
               }}
             />
             <Legend />
-            <Bar dataKey="present" fill="hsl(var(--chart-2))" name="Present" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="absent" fill="hsl(var(--chart-3))" name="Absent" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="percentage" fill="hsl(var(--chart-2))" name="Attendance %" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </CardContent>

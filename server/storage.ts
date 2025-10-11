@@ -141,11 +141,11 @@ export class DatabaseStorage implements IStorage {
 
   // Attendance
   async getAttendanceByStudent(studentId: number): Promise<Attendance[]> {
-    return await db.select().from(attendance).where(eq(attendance.studentId, studentId)).orderBy(desc(attendance.date));
+    return await db.select().from(attendance).where(eq(attendance.studentId, studentId)).orderBy(desc(attendance.month));
   }
 
   async getAllAttendance(): Promise<Attendance[]> {
-    return await db.select().from(attendance).orderBy(desc(attendance.date));
+    return await db.select().from(attendance).orderBy(desc(attendance.month));
   }
 
   async createAttendance(attendanceRecord: InsertAttendance): Promise<Attendance> {
