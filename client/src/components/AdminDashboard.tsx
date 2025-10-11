@@ -169,18 +169,34 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
   const attendanceColumns = [
     { 
       key: 'studentId', 
-      label: 'Student',
+      label: 'Roll No',
       render: (value: number) => {
         const student = students.find(s => s.id === value);
-        return student ? `${student.rollNo} - ${student.name}` : value;
+        return student ? student.rollNo : value;
+      }
+    },
+    { 
+      key: 'studentId', 
+      label: 'Student Name',
+      render: (value: number) => {
+        const student = students.find(s => s.id === value);
+        return student ? student.name : 'Unknown';
       }
     },
     { 
       key: 'subjectId', 
-      label: 'Subject',
+      label: 'Subject Code',
       render: (value: number) => {
         const subject = subjects.find(s => s.id === value);
-        return subject ? `${subject.code} - ${subject.name}` : value;
+        return subject ? subject.code : value;
+      }
+    },
+    { 
+      key: 'subjectId', 
+      label: 'Subject Name',
+      render: (value: number) => {
+        const subject = subjects.find(s => s.id === value);
+        return subject ? subject.name : 'Unknown';
       }
     },
     { key: 'month', label: 'Month' },
@@ -205,18 +221,34 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
   const marksColumns = [
     { 
       key: 'studentId', 
-      label: 'Student',
+      label: 'Roll No',
       render: (value: number) => {
         const student = students.find(s => s.id === value);
-        return student ? `${student.rollNo} - ${student.name}` : value;
+        return student ? student.rollNo : value;
+      }
+    },
+    { 
+      key: 'studentId', 
+      label: 'Student Name',
+      render: (value: number) => {
+        const student = students.find(s => s.id === value);
+        return student ? student.name : 'Unknown';
       }
     },
     { 
       key: 'subjectId', 
-      label: 'Subject',
+      label: 'Subject Code',
       render: (value: number) => {
         const subject = subjects.find(s => s.id === value);
-        return subject ? `${subject.code} - ${subject.name}` : value;
+        return subject ? subject.code : value;
+      }
+    },
+    { 
+      key: 'subjectId', 
+      label: 'Subject Name',
+      render: (value: number) => {
+        const subject = subjects.find(s => s.id === value);
+        return subject ? subject.name : 'Unknown';
       }
     },
     { key: 'month', label: 'Month' },
