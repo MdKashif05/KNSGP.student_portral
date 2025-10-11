@@ -53,19 +53,24 @@ export const insertSubjectSchema = createInsertSchema(subjects).omit({
 export type InsertSubject = z.infer<typeof insertSubjectSchema>;
 export type Subject = typeof subjects.$inferSelect;
 
-// Attendance table
+// Attendance table (month-wise tracking)
 export const attendance = pgTable("attendance", {
   id: serial("id").primaryKey(),
   studentId: integer("student_id").notNull().references(() => students.id, { onDelete: 'cascade' }),
   subjectId: integer("subject_id").notNull().references(() => subjects.id, { onDelete: 'cascade' }),
-  date: date("date").notNull(),
-  status: varchar("status", { length: 10 }).notNull(), // 'Present' or 'Absent'
+  month: varchar("month", { length: 20 }).notNull(), // Format: "YYYY-MM" (e.g., "2025-01")
+  totalDays: integer("total_days").notNull(),
+  presentDays: integer("present_days").notNull(),
+  percentage: real("percentage").notNull(),
+  status: varchar("status", { length: 20 }).notNull(), // 'Good' (≥80%), 'Average' (60-79%), 'Poor' (<60%)
   createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const insertAttendanceSchema = createInsertSchema(attendance).omit({
   id: true,
   createdAt: true,
+  percentage: true, // Auto-calculated
+  status: true, // Auto-calculated based on percentage
 });
 
 export type InsertAttendance = z.infer<typeof insertAttendanceSchema>;
@@ -76,15 +81,20 @@ export const marks = pgTable("marks", {
   id: serial("id").primaryKey(),
   studentId: integer("student_id").notNull().references(() => students.id, { onDelete: 'cascade' }),
   subjectId: integer("subject_id").notNull().references(() => subjects.id, { onDelete: 'cascade' }),
+  month: varchar("month", { length: 20 }).notNull(), // Format: "YYYY-MM" (e.g., "2025-01")
   testName: varchar("test_name", { length: 100 }).notNull(),
   marksObtained: real("marks_obtained").notNull(),
   totalMarks: real("total_marks").notNull(),
+  percentage: real("percentage").notNull(),
+  grade: varchar("grade", { length: 5 }).notNull(), // A+, A, B+, B, C, D, F
   createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const insertMarksSchema = createInsertSchema(marks).omit({
   id: true,
   createdAt: true,
+  percentage: true, // Auto-calculated
+  grade: true, // Auto-calculated based on percentage
 });
 
 export type InsertMarks = z.infer<typeof insertMarksSchema>;
