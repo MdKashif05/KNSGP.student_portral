@@ -158,7 +158,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(attendance).orderBy(desc(attendance.month));
   }
 
-  async createAttendance(attendanceRecord: InsertAttendance): Promise<Attendance> {
+  async createAttendance(attendanceRecord: any): Promise<Attendance> {
     const result = await db.insert(attendance).values(attendanceRecord).returning();
     return result[0];
   }
@@ -182,7 +182,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(marks);
   }
 
-  async createMarks(marksRecord: InsertMarks): Promise<Marks> {
+  async createMarks(marksRecord: any): Promise<Marks> {
     const result = await db.insert(marks).values(marksRecord).returning();
     return result[0];
   }
