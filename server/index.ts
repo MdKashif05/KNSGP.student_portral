@@ -1,5 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
+import createMemoryStore from "memorystore";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
@@ -7,9 +8,15 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Configure persistent memory store for sessions
+const MemoryStore = createMemoryStore(session);
+
 // Session configuration
 app.use(
   session({
+    store: new MemoryStore({
+      checkPeriod: 86400000, // Prune expired entries every 24h
+    }),
     secret: process.env.SESSION_SECRET || "cse-portal-secret-key-change-in-production",
     resave: false,
     saveUninitialized: false,
