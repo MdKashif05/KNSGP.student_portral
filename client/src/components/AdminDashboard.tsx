@@ -13,6 +13,11 @@ import AddBookDialog from "./AddBookDialog";
 import EditStudentDialog from "./EditStudentDialog";
 import EditSubjectDialog from "./EditSubjectDialog";
 import EditBookDialog from "./EditBookDialog";
+import AddAttendanceDialog from "./AddAttendanceDialog";
+import EditAttendanceDialog from "./EditAttendanceDialog";
+import AddMarksDialog from "./AddMarksDialog";
+import EditMarksDialog from "./EditMarksDialog";
+import UploadMarksCSVDialog from "./UploadMarksCSVDialog";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import { Users, TrendingUp, BookOpen, Award, Plus, Upload, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -34,10 +39,15 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
   const [showEditStudentDialog, setShowEditStudentDialog] = useState(false);
   const [showEditSubjectDialog, setShowEditSubjectDialog] = useState(false);
   const [showEditBookDialog, setShowEditBookDialog] = useState(false);
+  const [showAddAttendanceDialog, setShowAddAttendanceDialog] = useState(false);
+  const [showEditAttendanceDialog, setShowEditAttendanceDialog] = useState(false);
+  const [showAddMarksDialog, setShowAddMarksDialog] = useState(false);
+  const [showEditMarksDialog, setShowEditMarksDialog] = useState(false);
+  const [showUploadCSVDialog, setShowUploadCSVDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [itemToEdit, setItemToEdit] = useState<any>(null);
   const [itemToDelete, setItemToDelete] = useState<any>(null);
-  const [deleteType, setDeleteType] = useState<'student' | 'subject' | 'book' | null>(null);
+  const [deleteType, setDeleteType] = useState<'student' | 'subject' | 'book' | 'attendance' | 'marks' | null>(null);
   const { toast } = useToast();
 
   const style = {
@@ -63,6 +73,18 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
     enabled: activeSection === 'library',
   });
 
+  // Fetch attendance records
+  const { data: attendance = [], refetch: refetchAttendance } = useQuery<any[]>({
+    queryKey: ['/api/attendance'],
+    enabled: activeSection === 'attendance',
+  });
+
+  // Fetch marks records
+  const { data: marks = [], refetch: refetchMarks } = useQuery<any[]>({
+    queryKey: ['/api/marks'],
+    enabled: activeSection === 'marks',
+  });
+
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async ({ type, id }: { type: string; id: number }) => {
@@ -70,6 +92,8 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
         student: '/api/students',
         subject: '/api/subjects',
         book: '/api/library/books',
+        attendance: '/api/attendance',
+        marks: '/api/marks',
       };
       return await apiRequest('DELETE', `${endpoints[type]}/${id}`);
     },
@@ -81,6 +105,8 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
       if (type === 'student') refetchStudents();
       if (type === 'subject') refetchSubjects();
       if (type === 'book') refetchBooks();
+      if (type === 'attendance') refetchAttendance();
+      if (type === 'marks') refetchMarks();
       setShowDeleteDialog(false);
       setItemToDelete(null);
       setDeleteType(null);
@@ -94,14 +120,16 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
     },
   });
 
-  const handleEdit = (type: 'student' | 'subject' | 'book', item: any) => {
+  const handleEdit = (type: 'student' | 'subject' | 'book' | 'attendance' | 'marks', item: any) => {
     setItemToEdit(item);
     if (type === 'student') setShowEditStudentDialog(true);
     if (type === 'subject') setShowEditSubjectDialog(true);
     if (type === 'book') setShowEditBookDialog(true);
+    if (type === 'attendance') setShowEditAttendanceDialog(true);
+    if (type === 'marks') setShowEditMarksDialog(true);
   };
 
-  const handleDelete = (type: 'student' | 'subject' | 'book', item: any) => {
+  const handleDelete = (type: 'student' | 'subject' | 'book' | 'attendance' | 'marks', item: any) => {
     setDeleteType(type);
     setItemToDelete(item);
     setShowDeleteDialog(true);
@@ -136,6 +164,82 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
     { key: 'code', label: 'Subject Code' },
     { key: 'name', label: 'Subject Name' },
     { key: 'instructor', label: 'Instructor' },
+  ];
+
+  const attendanceColumns = [
+    { 
+      key: 'studentId', 
+      label: 'Student',
+      render: (value: number) => {
+        const student = students.find(s => s.id === value);
+        return student ? `${student.rollNo} - ${student.name}` : value;
+      }
+    },
+    { 
+      key: 'subjectId', 
+      label: 'Subject',
+      render: (value: number) => {
+        const subject = subjects.find(s => s.id === value);
+        return subject ? `${subject.code} - ${subject.name}` : value;
+      }
+    },
+    { key: 'month', label: 'Month' },
+    { key: 'presentDays', label: 'Present Days' },
+    { key: 'totalDays', label: 'Total Days' },
+    { 
+      key: 'percentage', 
+      label: 'Percentage',
+      render: (value: number) => `${value.toFixed(1)}%`
+    },
+    { 
+      key: 'status', 
+      label: 'Status',
+      render: (value: string) => (
+        <Badge variant={value === 'Good' ? 'default' : value === 'Average' ? 'secondary' : 'destructive'}>
+          {value}
+        </Badge>
+      )
+    },
+  ];
+
+  const marksColumns = [
+    { 
+      key: 'studentId', 
+      label: 'Student',
+      render: (value: number) => {
+        const student = students.find(s => s.id === value);
+        return student ? `${student.rollNo} - ${student.name}` : value;
+      }
+    },
+    { 
+      key: 'subjectId', 
+      label: 'Subject',
+      render: (value: number) => {
+        const subject = subjects.find(s => s.id === value);
+        return subject ? `${subject.code} - ${subject.name}` : value;
+      }
+    },
+    { key: 'month', label: 'Month' },
+    { key: 'testName', label: 'Test Name' },
+    { 
+      key: 'marksObtained', 
+      label: 'Marks',
+      render: (value: number, row: any) => `${value} / ${row.totalMarks}`
+    },
+    { 
+      key: 'percentage', 
+      label: 'Percentage',
+      render: (value: number) => `${value.toFixed(1)}%`
+    },
+    { 
+      key: 'grade', 
+      label: 'Grade',
+      render: (value: string) => (
+        <Badge variant={['A+', 'A'].includes(value) ? 'default' : ['B+', 'B'].includes(value) ? 'secondary' : value === 'C' ? 'outline' : 'destructive'}>
+          {value}
+        </Badge>
+      )
+    },
   ];
 
   // Calculate dashboard stats
@@ -224,25 +328,25 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
             <div className="flex justify-between items-center">
               <div>
                 <h2 className="text-2xl font-bold">Attendance Management</h2>
-                <p className="text-muted-foreground">Track and manage student attendance</p>
+                <p className="text-muted-foreground">Track and manage monthly attendance records</p>
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline" data-testid="button-upload-csv">
-                  <Upload className="h-4 w-4 mr-2" />
-                  Upload CSV
-                </Button>
-                <Button data-testid="button-mark-attendance">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Mark Attendance
-                </Button>
-              </div>
+              <Button 
+                onClick={() => setShowAddAttendanceDialog(true)}
+                data-testid="button-add-attendance"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Attendance
+              </Button>
             </div>
-            <Card>
-              <CardHeader>
-                <CardTitle>Attendance functionality</CardTitle>
-                <CardDescription>Detailed attendance management coming soon</CardDescription>
-              </CardHeader>
-            </Card>
+            <DataTable
+              title="Attendance Records"
+              description="Monthly attendance tracking"
+              columns={attendanceColumns}
+              data={attendance}
+              actions={true}
+              onEdit={(row) => handleEdit('attendance', row)}
+              onDelete={(row) => handleDelete('attendance', row)}
+            />
           </div>
         );
 
@@ -255,22 +359,32 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
                 <p className="text-muted-foreground">Upload and manage student marks</p>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" data-testid="button-upload-marks-csv">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowUploadCSVDialog(true)}
+                  data-testid="button-upload-marks-csv"
+                >
                   <Upload className="h-4 w-4 mr-2" />
                   Upload CSV
                 </Button>
-                <Button data-testid="button-add-marks">
+                <Button 
+                  onClick={() => setShowAddMarksDialog(true)}
+                  data-testid="button-add-marks"
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   Add Marks
                 </Button>
               </div>
             </div>
-            <Card>
-              <CardHeader>
-                <CardTitle>Marks functionality</CardTitle>
-                <CardDescription>Detailed marks management coming soon</CardDescription>
-              </CardHeader>
-            </Card>
+            <DataTable
+              title="Marks Records"
+              description="Student marks and grades"
+              columns={marksColumns}
+              data={marks}
+              actions={true}
+              onEdit={(row) => handleEdit('marks', row)}
+              onDelete={(row) => handleDelete('marks', row)}
+            />
           </div>
         );
 
@@ -408,6 +522,38 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
         onOpenChange={setShowEditBookDialog}
         book={itemToEdit}
         onSuccess={refetchBooks}
+      />
+
+      <AddAttendanceDialog
+        open={showAddAttendanceDialog}
+        onOpenChange={setShowAddAttendanceDialog}
+        onSuccess={refetchAttendance}
+      />
+
+      <EditAttendanceDialog
+        open={showEditAttendanceDialog}
+        onOpenChange={setShowEditAttendanceDialog}
+        attendance={itemToEdit}
+        onSuccess={refetchAttendance}
+      />
+
+      <AddMarksDialog
+        open={showAddMarksDialog}
+        onOpenChange={setShowAddMarksDialog}
+        onSuccess={refetchMarks}
+      />
+
+      <EditMarksDialog
+        open={showEditMarksDialog}
+        onOpenChange={setShowEditMarksDialog}
+        marks={itemToEdit}
+        onSuccess={refetchMarks}
+      />
+
+      <UploadMarksCSVDialog
+        open={showUploadCSVDialog}
+        onOpenChange={setShowUploadCSVDialog}
+        onSuccess={refetchMarks}
       />
 
       <DeleteConfirmDialog
