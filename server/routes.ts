@@ -12,6 +12,24 @@ import {
   insertBookIssueSchema
 } from "@shared/schema";
 
+// Helper function to calculate attendance status
+function calculateAttendanceStatus(percentage: number): string {
+  if (percentage >= 80) return 'Good';
+  if (percentage >= 60) return 'Average';
+  return 'Poor';
+}
+
+// Helper function to calculate grade
+function calculateGrade(percentage: number): string {
+  if (percentage >= 90) return 'A+';
+  if (percentage >= 85) return 'A';
+  if (percentage >= 80) return 'B+';
+  if (percentage >= 75) return 'B';
+  if (percentage >= 60) return 'C';
+  if (percentage >= 50) return 'D';
+  return 'F';
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // ========== AUTH ROUTES ==========
   
@@ -155,14 +173,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const marksRecords = await storage.getMarksByStudent(student.id);
         const bookIssues = await storage.getBookIssuesByStudent(student.id);
         
-        // Calculate attendance percentage
-        const totalClasses = attendanceRecords.length;
-        const presentClasses = attendanceRecords.filter(a => a.status === 'Present').length;
-        const attendancePercentage = totalClasses > 0 ? (presentClasses / totalClasses * 100).toFixed(1) : '0.0';
+        // Calculate average attendance percentage from monthly records
+        const attendancePercentage = attendanceRecords.length > 0 
+          ? (attendanceRecords.reduce((sum, a) => sum + a.percentage, 0) / attendanceRecords.length).toFixed(1) 
+          : '0.0';
         
-        // Calculate average marks
-        const totalMarks = marksRecords.reduce((sum, m) => sum + m.marksObtained, 0);
-        const avgMarks = marksRecords.length > 0 ? (totalMarks / marksRecords.length).toFixed(1) : '0.0';
+        // Calculate average marks percentage
+        const avgMarksPercentage = marksRecords.length > 0 
+          ? (marksRecords.reduce((sum, m) => sum + m.percentage, 0) / marksRecords.length).toFixed(1) 
+          : '0.0';
         
         // Count issued books (not returned)
         const booksIssued = bookIssues.filter(b => b.status === 'issued').length;
@@ -170,7 +189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return {
           ...student,
           attendancePercentage,
-          avgMarks,
+          avgMarks: avgMarksPercentage,
           booksIssued
         };
       }));
@@ -285,7 +304,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/attendance", requireAdmin, async (req, res) => {
     try {
       const validatedData = insertAttendanceSchema.parse(req.body);
-      const attendance = await storage.createAttendance(validatedData);
+      
+      // Auto-calculate percentage and status
+      const percentage = (validatedData.presentDays / validatedData.totalDays) * 100;
+      const status = calculateAttendanceStatus(percentage);
+      
+      const attendanceData = {
+        ...validatedData,
+        percentage,
+        status
+      };
+      
+      const attendance = await storage.createAttendance(attendanceData);
       res.status(201).json(attendance);
     } catch (error: any) {
       res.status(400).json({ message: "Error creating attendance", error: error.message });
@@ -295,7 +325,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/attendance/:id", requireAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const attendance = await storage.updateAttendance(id, req.body);
+      
+      // Auto-calculate percentage and status if totalDays and presentDays are provided
+      let updateData = req.body;
+      if (req.body.totalDays && req.body.presentDays) {
+        const percentage = (req.body.presentDays / req.body.totalDays) * 100;
+        const status = calculateAttendanceStatus(percentage);
+        updateData = {
+          ...req.body,
+          percentage,
+          status
+        };
+      }
+      
+      const attendance = await storage.updateAttendance(id, updateData);
       if (!attendance) {
         return res.status(404).json({ message: "Attendance record not found" });
       }
@@ -339,7 +382,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/marks", requireAdmin, async (req, res) => {
     try {
       const validatedData = insertMarksSchema.parse(req.body);
-      const marks = await storage.createMarks(validatedData);
+      
+      // Auto-calculate percentage and grade
+      const percentage = (validatedData.marksObtained / validatedData.totalMarks) * 100;
+      const grade = calculateGrade(percentage);
+      
+      const marksData = {
+        ...validatedData,
+        percentage,
+        grade
+      };
+      
+      const marks = await storage.createMarks(marksData);
       res.status(201).json(marks);
     } catch (error: any) {
       res.status(400).json({ message: "Error creating marks", error: error.message });
@@ -349,7 +403,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/marks/:id", requireAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const marks = await storage.updateMarks(id, req.body);
+      
+      // Auto-calculate percentage and grade if marksObtained and totalMarks are provided
+      let updateData = req.body;
+      if (req.body.marksObtained !== undefined && req.body.totalMarks !== undefined) {
+        const percentage = (req.body.marksObtained / req.body.totalMarks) * 100;
+        const grade = calculateGrade(percentage);
+        updateData = {
+          ...req.body,
+          percentage,
+          grade
+        };
+      }
+      
+      const marks = await storage.updateMarks(id, updateData);
       if (!marks) {
         return res.status(404).json({ message: "Marks record not found" });
       }
