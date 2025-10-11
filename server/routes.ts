@@ -26,9 +26,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Trim inputs to remove whitespace
+      const trimmedUsername = username.trim();
+      const trimmedPassword = password.trim();
+
       if (role === 'admin') {
         // Admin login
-        const admin = await storage.getAdminByName(username);
+        const admin = await storage.getAdminByName(trimmedUsername);
         
         if (!admin) {
           return res.status(401).json({ 
@@ -36,7 +40,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        if (admin.password !== password) {
+        if (admin.password !== trimmedPassword) {
           return res.status(401).json({ 
             message: "Invalid password" 
           });
@@ -57,7 +61,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       } else if (role === 'student') {
         // Student login (case-insensitive password)
-        const student = await storage.getStudentByRollNo(username);
+        const student = await storage.getStudentByRollNo(trimmedUsername);
         
         if (!student) {
           return res.status(401).json({ 
@@ -65,8 +69,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        // Case-insensitive password check
-        if (student.password.toLowerCase() !== password.toLowerCase()) {
+        // Case-insensitive password check (trim both sides)
+        if (student.password.toLowerCase().trim() !== trimmedPassword.toLowerCase()) {
           return res.status(401).json({ 
             message: "Invalid password" 
           });

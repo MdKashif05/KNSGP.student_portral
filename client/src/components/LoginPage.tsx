@@ -34,17 +34,19 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     
     setIsLoading(true);
     try {
-      const response: any = await apiRequest("POST", "/api/login", {
+      const response = await apiRequest("POST", "/api/login", {
         username: adminUsername,
         password: adminPassword,
         role: 'admin'
       });
 
+      const data = await response.json();
+
       toast({
         title: "Success",
         description: "Logged in successfully",
       });
-      onLogin('admin', response.user);
+      onLogin('admin', data.user);
     } catch (error: any) {
       toast({
         title: "Login Failed",
@@ -70,17 +72,19 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     
     setIsLoading(true);
     try {
-      const response: any = await apiRequest("POST", "/api/login", {
+      const response = await apiRequest("POST", "/api/login", {
         username: studentRollNo,
         password: studentPassword,
         role: 'student'
       });
 
+      const data = await response.json();
+
       toast({
         title: "Success",
         description: "Logged in successfully",
       });
-      onLogin('student', response.user);
+      onLogin('student', data.user);
     } catch (error: any) {
       toast({
         title: "Login Failed",
