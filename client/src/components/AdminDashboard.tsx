@@ -181,34 +181,34 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
 
   const attendanceColumns = [
     { 
-      key: 'studentId', 
+      key: 'studentRollNo', 
       label: 'Roll No',
-      render: (value: number) => {
-        const student = students.find(s => s.id === value);
-        return student ? student.rollNo : value;
+      render: (_: any, row: any) => {
+        const student = students.find(s => s.id === row.studentId);
+        return student ? student.rollNo : row.studentId;
       }
     },
     { 
-      key: 'studentId', 
+      key: 'studentName', 
       label: 'Student Name',
-      render: (value: number) => {
-        const student = students.find(s => s.id === value);
+      render: (_: any, row: any) => {
+        const student = students.find(s => s.id === row.studentId);
         return student ? student.name : 'Unknown';
       }
     },
     { 
-      key: 'subjectId', 
+      key: 'subjectCode', 
       label: 'Subject Code',
-      render: (value: number) => {
-        const subject = subjects.find(s => s.id === value);
-        return subject ? subject.code : value;
+      render: (_: any, row: any) => {
+        const subject = subjects.find(s => s.id === row.subjectId);
+        return subject ? subject.code : row.subjectId;
       }
     },
     { 
-      key: 'subjectId', 
+      key: 'subjectName', 
       label: 'Subject Name',
-      render: (value: number) => {
-        const subject = subjects.find(s => s.id === value);
+      render: (_: any, row: any) => {
+        const subject = subjects.find(s => s.id === row.subjectId);
         return subject ? subject.name : 'Unknown';
       }
     },
@@ -233,34 +233,34 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
 
   const marksColumns = [
     { 
-      key: 'studentId', 
+      key: 'studentRollNo', 
       label: 'Roll No',
-      render: (value: number) => {
-        const student = students.find(s => s.id === value);
-        return student ? student.rollNo : value;
+      render: (_: any, row: any) => {
+        const student = students.find(s => s.id === row.studentId);
+        return student ? student.rollNo : row.studentId;
       }
     },
     { 
-      key: 'studentId', 
+      key: 'studentName', 
       label: 'Student Name',
-      render: (value: number) => {
-        const student = students.find(s => s.id === value);
+      render: (_: any, row: any) => {
+        const student = students.find(s => s.id === row.studentId);
         return student ? student.name : 'Unknown';
       }
     },
     { 
-      key: 'subjectId', 
+      key: 'subjectCode', 
       label: 'Subject Code',
-      render: (value: number) => {
-        const subject = subjects.find(s => s.id === value);
-        return subject ? subject.code : value;
+      render: (_: any, row: any) => {
+        const subject = subjects.find(s => s.id === row.subjectId);
+        return subject ? subject.code : row.subjectId;
       }
     },
     { 
-      key: 'subjectId', 
+      key: 'subjectName', 
       label: 'Subject Name',
-      render: (value: number) => {
-        const subject = subjects.find(s => s.id === value);
+      render: (_: any, row: any) => {
+        const subject = subjects.find(s => s.id === row.subjectId);
         return subject ? subject.name : 'Unknown';
       }
     },
