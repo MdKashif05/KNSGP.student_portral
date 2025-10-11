@@ -22,6 +22,7 @@ import {
   LogOut
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import collegeLogo from "@assets/WhatsApp Image 2025-10-11 at 23.32.21_1760206203929.jpeg";
 
 interface AdminSidebarProps {
   activeItem?: string;
@@ -45,7 +46,7 @@ export default function AdminSidebar({ activeItem = "dashboard", onNavigate, onL
       <SidebarHeader className="border-b border-sidebar-border p-4">
         <div className="flex items-center gap-3">
           <img 
-            src="/attached_assets/WhatsApp Image 2025-10-11 at 23.32.21_1760206203929.jpeg"
+            src={collegeLogo}
             alt="KNSGP College Logo"
             className="h-[50px] w-[50px] rounded-lg object-contain"
             data-testid="img-college-logo"
