@@ -63,6 +63,7 @@ export default function AddStudentDialog({ open, onOpenChange, onSuccess }: AddS
             <Label htmlFor="rollNo">Roll Number</Label>
             <Input
               id="rollNo"
+              data-testid="input-student-rollno"
               value={rollNo}
               onChange={(e) => setRollNo(e.target.value)}
               placeholder="e.g., 2023-CSE-57"
@@ -73,6 +74,7 @@ export default function AddStudentDialog({ open, onOpenChange, onSuccess }: AddS
             <Label htmlFor="name">Student Name</Label>
             <Input
               id="name"
+              data-testid="input-student-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Enter student name"
@@ -83,6 +85,7 @@ export default function AddStudentDialog({ open, onOpenChange, onSuccess }: AddS
             <Label htmlFor="password">Password</Label>
             <Input
               id="password"
+              data-testid="input-student-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter password (name by default)"
@@ -90,10 +93,10 @@ export default function AddStudentDialog({ open, onOpenChange, onSuccess }: AddS
             />
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading} data-testid="button-cancel">
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" disabled={isLoading} data-testid="button-submit-student">
               {isLoading ? "Adding..." : "Add Student"}
             </Button>
           </DialogFooter>
