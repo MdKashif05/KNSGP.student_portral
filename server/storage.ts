@@ -7,6 +7,7 @@ import {
   marks, 
   libraryBooks, 
   bookIssues,
+  notices,
   type Student,
   type Admin,
   type Subject,
@@ -14,13 +15,15 @@ import {
   type Marks,
   type LibraryBook,
   type BookIssue,
+  type Notice,
   type InsertStudent,
   type InsertAdmin,
   type InsertSubject,
   type InsertAttendance,
   type InsertMarks,
   type InsertLibraryBook,
-  type InsertBookIssue
+  type InsertBookIssue,
+  type InsertNotice
 } from "@shared/schema";
 import { eq, and, desc } from "drizzle-orm";
 
@@ -71,6 +74,13 @@ export interface IStorage {
   createBookIssue(issue: InsertBookIssue): Promise<BookIssue>;
   updateBookIssue(id: number, issue: Partial<InsertBookIssue>): Promise<BookIssue | undefined>;
   returnBook(id: number, returnDate: string): Promise<BookIssue | undefined>;
+
+  // Notices
+  getAllNotices(): Promise<Notice[]>;
+  getNoticeById(id: number): Promise<Notice | undefined>;
+  createNotice(notice: InsertNotice): Promise<Notice>;
+  updateNotice(id: number, notice: Partial<InsertNotice>): Promise<Notice | undefined>;
+  deleteNotice(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -237,6 +247,31 @@ export class DatabaseStorage implements IStorage {
       .where(eq(bookIssues.id, id))
       .returning();
     return result[0];
+  }
+
+  // Notices
+  async getAllNotices(): Promise<Notice[]> {
+    return await db.select().from(notices).orderBy(desc(notices.createdAt));
+  }
+
+  async getNoticeById(id: number): Promise<Notice | undefined> {
+    const result = await db.select().from(notices).where(eq(notices.id, id));
+    return result[0];
+  }
+
+  async createNotice(notice: InsertNotice): Promise<Notice> {
+    const result = await db.insert(notices).values(notice).returning();
+    return result[0];
+  }
+
+  async updateNotice(id: number, notice: Partial<InsertNotice>): Promise<Notice | undefined> {
+    const result = await db.update(notices).set(notice).where(eq(notices.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteNotice(id: number): Promise<boolean> {
+    const result = await db.delete(notices).where(eq(notices.id, id)).returning();
+    return result.length > 0;
   }
 }
 
