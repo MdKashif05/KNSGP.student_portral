@@ -110,19 +110,26 @@ async function seed() {
     const createdBooks = await db.insert(libraryBooks).values(libraryBooksData).returning();
     console.log(`✅ Created ${createdBooks.length} library books`);
 
-    // Seed sample attendance (random data)
+    // Seed sample attendance (month-wise tracking)
     const attendanceRecords = [];
-    const dates = ['2025-10-01', '2025-10-02', '2025-10-03', '2025-10-04', '2025-10-08', '2025-10-09'];
+    const months = ['2025-09', '2025-10'];
     
     for (const student of createdStudents) {
       for (const subject of createdSubjects) {
-        for (const date of dates) {
-          // 85% chance of being present
-          const status = Math.random() > 0.15 ? 'Present' : 'Absent';
+        for (const month of months) {
+          // Random attendance data
+          const totalDays = 25;
+          const presentDays = Math.floor(Math.random() * 10) + 15; // 15-24 days
+          const percentage = (presentDays / totalDays) * 100;
+          const status = percentage >= 80 ? 'Good' : percentage >= 60 ? 'Average' : 'Poor';
+          
           attendanceRecords.push({
             studentId: student.id,
             subjectId: subject.id,
-            date,
+            month,
+            totalDays,
+            presentDays,
+            percentage,
             status,
           });
         }
@@ -134,18 +141,34 @@ async function seed() {
 
     // Seed sample marks
     const marksRecords = [];
-    const tests = ['Test 1', 'Test 2', 'Mid-term'];
+    const testsData = [
+      { month: '2025-09', name: 'Test 1' },
+      { month: '2025-09', name: 'Mid-term' },
+      { month: '2025-10', name: 'Test 2' },
+    ];
     
     for (const student of createdStudents) {
       for (const subject of createdSubjects) {
-        for (const test of tests) {
+        for (const test of testsData) {
           const marksObtained = Math.floor(Math.random() * 30) + 60; // 60-90
+          const totalMarks = 100;
+          const percentage = (marksObtained / totalMarks) * 100;
+          const grade = percentage >= 90 ? 'A+' : 
+                       percentage >= 80 ? 'A' : 
+                       percentage >= 70 ? 'B+' : 
+                       percentage >= 60 ? 'B' : 
+                       percentage >= 50 ? 'C' : 
+                       percentage >= 40 ? 'D' : 'F';
+          
           marksRecords.push({
             studentId: student.id,
             subjectId: subject.id,
-            testName: test,
+            month: test.month,
+            testName: test.name,
             marksObtained,
-            totalMarks: 100,
+            totalMarks,
+            percentage,
+            grade,
           });
         }
       }
