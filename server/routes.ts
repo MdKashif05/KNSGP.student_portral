@@ -9,7 +9,8 @@ import {
   insertAttendanceSchema,
   insertMarksSchema,
   insertLibraryBookSchema,
-  insertBookIssueSchema
+  insertBookIssueSchema,
+  insertNoticeSchema
 } from "@shared/schema";
 
 // Helper function to calculate attendance status
@@ -522,6 +523,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(bookIssue);
     } catch (error: any) {
       res.status(400).json({ message: "Error returning book", error: error.message });
+    }
+  });
+
+  // ========== NOTICE ROUTES ==========
+  
+  app.get("/api/notices", requireAuth, async (req, res) => {
+    try {
+      const notices = await storage.getAllNotices();
+      res.json(notices);
+    } catch (error: any) {
+      res.status(500).json({ message: "Error fetching notices", error: error.message });
+    }
+  });
+
+  app.get("/api/notices/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const notice = await storage.getNoticeById(id);
+      if (!notice) {
+        return res.status(404).json({ message: "Notice not found" });
+      }
+      res.json(notice);
+    } catch (error: any) {
+      res.status(500).json({ message: "Error fetching notice", error: error.message });
+    }
+  });
+
+  app.post("/api/notices", requireAdmin, async (req, res) => {
+    try {
+      const validatedData = insertNoticeSchema.parse(req.body);
+      const notice = await storage.createNotice(validatedData);
+      res.status(201).json(notice);
+    } catch (error: any) {
+      res.status(400).json({ message: "Error creating notice", error: error.message });
+    }
+  });
+
+  app.put("/api/notices/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validatedData = insertNoticeSchema.partial().parse(req.body);
+      const notice = await storage.updateNotice(id, validatedData);
+      if (!notice) {
+        return res.status(404).json({ message: "Notice not found" });
+      }
+      res.json(notice);
+    } catch (error: any) {
+      res.status(400).json({ message: "Error updating notice", error: error.message });
+    }
+  });
+
+  app.delete("/api/notices/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteNotice(id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Notice not found" });
+      }
+      res.json({ success: true, message: "Notice deleted successfully" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Error deleting notice", error: error.message });
     }
   });
 
