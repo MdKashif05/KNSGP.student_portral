@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GraduationCap, UserCog, Building2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import collegeLogo from "@assets/stock_images/polytechnic_college__5afdbedb.jpg";
+import collegeLogo from "@assets/WhatsApp Image 2025-10-11 at 23.32.21_1760206203929.jpeg";
 
 interface LoginPageProps {
   onLogin: (role: 'admin' | 'student', user: any) => void;
