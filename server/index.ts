@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
-import createMemoryStore from "memorystore";
+import connectPgSimple from "connect-pg-simple";
+import pg from "pg";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
@@ -8,20 +9,29 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Configure persistent memory store for sessions
-const MemoryStore = createMemoryStore(session);
+// Trust proxy for proper session handling behind Replit's edge proxy
+app.set('trust proxy', 1);
 
-// Session configuration
+// Configure PostgreSQL session store for production reliability
+const PgSession = connectPgSimple(session);
+const pool = new pg.Pool({ 
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined
+});
+
+// Session configuration with PostgreSQL store
 app.use(
   session({
-    store: new MemoryStore({
-      checkPeriod: 86400000, // Prune expired entries every 24h
+    store: new PgSession({
+      pool: pool,
+      createTableIfMissing: true,
+      tableName: 'session',
     }),
     secret: process.env.SESSION_SECRET || "cse-portal-secret-key-change-in-production",
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: process.env.NODE_ENV === "production",
+      secure: false, // Replit handles HTTPS at the edge
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     },

@@ -53,9 +53,10 @@ Preferred communication style: Simple, everyday language.
 **Authentication System:**
 - Dual login system: Admin (username/password) and Student (roll number/name)
 - Case-insensitive password matching for student logins
-- Session-based authentication with HttpOnly cookies
+- Session-based authentication with HttpOnly cookies stored in PostgreSQL
+- PostgreSQL session store ensures session persistence across autoscale instances
 - Role-based access control enforced at route level
-- Shared admin password (KNSGP2023) for all administrators
+- Shared admin password from ADMIN_PASSWORD environment variable (Knsgp2023)
 
 ### Data Storage
 
@@ -107,7 +108,8 @@ Preferred communication style: Simple, everyday language.
 
 **Session Management:**
 - express-session - Session middleware
-- connect-pg-simple - PostgreSQL session store (configured but may need activation)
+- connect-pg-simple - PostgreSQL session store for production reliability
+- **Important:** PostgreSQL session store is REQUIRED for production deployments with autoscale to persist sessions across multiple server instances
 
 **Styling:**
 - tailwindcss - Utility-first CSS framework
