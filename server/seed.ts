@@ -2,7 +2,9 @@ import { db } from "./db";
 import { students, admins, subjects, attendance, marks, libraryBooks, bookIssues } from "@shared/schema";
 import { sql } from "drizzle-orm";
 
-const ADMIN_PASSWORD = "KNSGP2023";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (() => {
+  throw new Error("ADMIN_PASSWORD environment variable is required for seeding");
+})();
 
 const adminData = [
   { name: "Md Kashif", password: ADMIN_PASSWORD },
