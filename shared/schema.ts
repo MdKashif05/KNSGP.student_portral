@@ -137,3 +137,20 @@ export const insertBookIssueSchema = createInsertSchema(bookIssues).omit({
 
 export type InsertBookIssue = z.infer<typeof insertBookIssueSchema>;
 export type BookIssue = typeof bookIssues.$inferSelect;
+
+// Notices table
+export const notices = pgTable("notices", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  priority: varchar("priority", { length: 20 }).notNull().default('normal'), // 'high', 'normal', 'low'
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertNoticeSchema = createInsertSchema(notices).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertNotice = z.infer<typeof insertNoticeSchema>;
+export type Notice = typeof notices.$inferSelect;
