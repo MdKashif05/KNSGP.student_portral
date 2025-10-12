@@ -329,12 +329,20 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
     switch (activeSection) {
       case "dashboard":
         return (
-          <div className="space-y-6">
+          <div className="space-y-6 fade-in">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <StatCard title="Total Students" value={totalStudents.toString()} icon={Users} description="Active enrollments" />
-              <StatCard title="Avg Attendance" value={`${avgAttendance}%`} icon={TrendingUp} />
-              <StatCard title="Books Issued" value={totalBooksIssued.toString()} icon={BookOpen} description="Currently checked out" />
-              <StatCard title="Avg Marks" value={avgMarks} icon={Award} />
+              <div className="slide-up" style={{animationDelay: '0.1s'}}>
+                <StatCard title="Total Students" value={totalStudents.toString()} icon={Users} description="Active enrollments" />
+              </div>
+              <div className="slide-up" style={{animationDelay: '0.2s'}}>
+                <StatCard title="Avg Attendance" value={`${avgAttendance}%`} icon={TrendingUp} />
+              </div>
+              <div className="slide-up" style={{animationDelay: '0.3s'}}>
+                <StatCard title="Books Issued" value={totalBooksIssued.toString()} icon={BookOpen} description="Currently checked out" />
+              </div>
+              <div className="slide-up" style={{animationDelay: '0.4s'}}>
+                <StatCard title="Avg Marks" value={avgMarks} icon={Award} />
+              </div>
             </div>
           </div>
         );
