@@ -341,15 +341,16 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
 
       case "students":
         return (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
               <div>
-                <h2 className="text-2xl font-bold">Student Management</h2>
-                <p className="text-muted-foreground">Manage all student records</p>
+                <h2 className="text-2xl sm:text-3xl font-bold gradient-text">Student Management</h2>
+                <p className="text-sm sm:text-base text-muted-foreground mt-1">Manage all student records</p>
               </div>
               <Button 
                 onClick={() => setShowAddStudentDialog(true)}
                 data-testid="button-add-student"
+                className="w-full sm:w-auto"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Student
@@ -369,15 +370,16 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
 
       case "subjects":
         return (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
               <div>
-                <h2 className="text-2xl font-bold">Subject Management</h2>
-                <p className="text-muted-foreground">Manage all subjects and courses</p>
+                <h2 className="text-2xl sm:text-3xl font-bold gradient-text">Subject Management</h2>
+                <p className="text-sm sm:text-base text-muted-foreground mt-1">Manage all subjects and courses</p>
               </div>
               <Button 
                 onClick={() => setShowAddSubjectDialog(true)}
                 data-testid="button-add-subject"
+                className="w-full sm:w-auto"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Subject
@@ -420,15 +422,16 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
         });
 
         return (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
               <div>
-                <h2 className="text-2xl font-bold">Attendance Management</h2>
-                <p className="text-muted-foreground">Track and manage monthly attendance records</p>
+                <h2 className="text-2xl sm:text-3xl font-bold gradient-text">Attendance Management</h2>
+                <p className="text-sm sm:text-base text-muted-foreground mt-1">Track and manage monthly attendance records</p>
               </div>
               <Button 
                 onClick={() => setShowAddAttendanceDialog(true)}
                 data-testid="button-add-attendance"
+                className="w-full sm:w-auto"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Attendance
@@ -436,7 +439,7 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
             </div>
             
             {/* Search Bar */}
-            <div className="relative w-full md:w-96">
+            <div className="relative w-full sm:w-96">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="text"
@@ -489,17 +492,18 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
         });
 
         return (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
               <div>
-                <h2 className="text-2xl font-bold">Marks Management</h2>
-                <p className="text-muted-foreground">Upload and manage student marks</p>
+                <h2 className="text-2xl sm:text-3xl font-bold gradient-text">Marks Management</h2>
+                <p className="text-sm sm:text-base text-muted-foreground mt-1">Upload and manage student marks</p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                 <Button 
                   variant="outline" 
                   onClick={() => setShowUploadCSVDialog(true)}
                   data-testid="button-upload-marks-csv"
+                  className="w-full sm:w-auto"
                 >
                   <Upload className="h-4 w-4 mr-2" />
                   Upload CSV
@@ -507,6 +511,7 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
                 <Button 
                   onClick={() => setShowAddMarksDialog(true)}
                   data-testid="button-add-marks"
+                  className="w-full sm:w-auto"
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Add Marks
@@ -873,16 +878,16 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
           onLogout={onLogout}
         />
         <div className="flex flex-col flex-1">
-          <header className="flex items-center justify-between p-4 border-b sticky top-0 bg-background z-10">
-            <div className="flex items-center gap-4">
+          <header className="flex items-center justify-between p-4 sm:p-6 border-b sticky top-0 glass-effect z-10 backdrop-blur-xl">
+            <div className="flex items-center gap-3 sm:gap-4">
               <SidebarTrigger data-testid="button-sidebar-toggle" />
               <div>
-                <h1 className="text-lg font-semibold">Admin Dashboard</h1>
-                <p className="text-xs text-muted-foreground">Welcome, {adminName}</p>
+                <h1 className="text-xl sm:text-2xl font-bold gradient-text">Admin Dashboard</h1>
+                <p className="text-sm text-muted-foreground">Welcome, {adminName}</p>
               </div>
             </div>
           </header>
-          <main className="flex-1 overflow-auto p-6">
+          <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
             {renderContent()}
           </main>
         </div>
