@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import LoginPage from "@/components/LoginPage";
 import AdminDashboard from "@/components/AdminDashboard";
 import StudentDashboard from "@/components/StudentDashboard";
+import Chatbot from "@/components/Chatbot";
 
 function App() {
   const [user, setUser] = useState<{ 
@@ -82,14 +83,20 @@ function App() {
         {!user.role ? (
           <LoginPage onLogin={handleLogin} />
         ) : user.role === 'admin' ? (
-          <AdminDashboard adminName={user.name!} onLogout={handleLogout} />
+          <>
+            <AdminDashboard adminName={user.name!} onLogout={handleLogout} />
+            <Chatbot />
+          </>
         ) : (
-          <StudentDashboard 
-            studentName={user.name!} 
-            rollNo={user.rollNo!}
-            studentId={user.id!}
-            onLogout={handleLogout} 
-          />
+          <>
+            <StudentDashboard 
+              studentName={user.name!} 
+              rollNo={user.rollNo!}
+              studentId={user.id!}
+              onLogout={handleLogout} 
+            />
+            <Chatbot />
+          </>
         )}
         <Toaster />
       </TooltipProvider>
