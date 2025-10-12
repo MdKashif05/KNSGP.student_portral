@@ -79,6 +79,7 @@ Preferred communication style: Simple, everyday language.
     - EduManage Chatbot Founders: Mohammad Kashif, Rajan Kumar, and Md Shad
     - AP (Advanced Programming): Room 309 Unit 03, Guided By Anurag Pandey
     - Pathak Jii: Love Guru without a love life
+    - Shailya Singh: Too much closed
   - Current exam schedules and registration deadlines (December 2025 exams)
   - SBTE Bihar course details, syllabus, and portal links
   - General polytechnic education guidance

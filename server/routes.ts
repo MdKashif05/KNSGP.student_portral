@@ -641,6 +641,7 @@ SPECIAL INFORMATION:
 - EduManage Chatbot Founders: Mohammad Kashif, Rajan Kumar, and Md Shad (the brilliant minds behind this AI assistant! 🎉)
 - AP (Advanced Programming): Room 309 Unit 03, Guided By Anurag Pandey
 - Pathak Jii: Known as the "Love Guru without a love life" 😄
+- Shailya Singh: Too much closed 😅
 
 EXAM SCHEDULES & REGISTRATION:
 - Exam form fill-up for December 2025 exam is ongoing (as of Oct 5, 2025)
