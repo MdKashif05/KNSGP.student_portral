@@ -92,13 +92,19 @@ export default function Chatbot() {
 
   return (
     <>
-      {/* Floating Chat Button with gradient and pulse effect */}
+      {/* Floating Chat Button with gradient and pulse effect - Always visible on mobile */}
       <Button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-4 right-4 h-16 w-16 rounded-full shadow-2xl z-[9999] bg-gradient-to-br from-primary to-purple-600 hover:shadow-purple-500/50 hover:scale-110 transition-all duration-300 animate-pulse"
+        className="!fixed !bottom-4 !right-4 h-16 w-16 rounded-full shadow-2xl !z-[9999] bg-gradient-to-br from-primary to-purple-600 hover:shadow-purple-500/50 hover:scale-110 transition-all duration-300 animate-pulse"
         size="icon"
         data-testid="button-open-chatbot"
-        style={{ animationDuration: '2s' }}
+        style={{ 
+          animationDuration: '2s',
+          position: 'fixed',
+          bottom: '1rem',
+          right: '1rem',
+          zIndex: 9999
+        }}
       >
         <MessageCircle className="h-7 w-7 text-white" />
       </Button>
