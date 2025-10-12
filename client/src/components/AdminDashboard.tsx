@@ -119,8 +119,14 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
       if (type === 'student') refetchStudents();
       if (type === 'subject') refetchSubjects();
       if (type === 'book') refetchBooks();
-      if (type === 'attendance') refetchAttendance();
-      if (type === 'marks') refetchMarks();
+      if (type === 'attendance') {
+        refetchAttendance();
+        refetchStudents(); // Update student totals
+      }
+      if (type === 'marks') {
+        refetchMarks();
+        refetchStudents(); // Update student totals
+      }
       if (type === 'notice') refetchNotices();
       setShowDeleteDialog(false);
       setItemToDelete(null);
@@ -398,12 +404,18 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
           const subject = subjects.find(s => s.id === record.subjectId);
           const searchLower = attendanceSearch.toLowerCase();
           
+          const studentName = student?.name?.toLowerCase();
+          const studentRollNo = student?.rollNo?.toLowerCase();
+          const subjectName = subject?.name?.toLowerCase();
+          const subjectCode = subject?.code?.toLowerCase();
+          const month = record.month?.toLowerCase();
+          
           return (
-            student?.name.toLowerCase().includes(searchLower) ||
-            student?.rollNo.toLowerCase().includes(searchLower) ||
-            subject?.name.toLowerCase().includes(searchLower) ||
-            subject?.code.toLowerCase().includes(searchLower) ||
-            record.month.includes(searchLower)
+            (studentName && studentName.includes(searchLower)) ||
+            (studentRollNo && studentRollNo.includes(searchLower)) ||
+            (subjectName && subjectName.includes(searchLower)) ||
+            (subjectCode && subjectCode.includes(searchLower)) ||
+            (month && month.includes(searchLower))
           );
         });
 
@@ -457,14 +469,22 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
           const subject = subjects.find(s => s.id === record.subjectId);
           const searchLower = marksSearch.toLowerCase();
           
+          const studentName = student?.name?.toLowerCase();
+          const studentRollNo = student?.rollNo?.toLowerCase();
+          const subjectName = subject?.name?.toLowerCase();
+          const subjectCode = subject?.code?.toLowerCase();
+          const month = record.month?.toLowerCase();
+          const testName = record.testName?.toLowerCase();
+          const grade = record.grade?.toLowerCase();
+          
           return (
-            student?.name.toLowerCase().includes(searchLower) ||
-            student?.rollNo.toLowerCase().includes(searchLower) ||
-            subject?.name.toLowerCase().includes(searchLower) ||
-            subject?.code.toLowerCase().includes(searchLower) ||
-            record.month.includes(searchLower) ||
-            record.testName.toLowerCase().includes(searchLower) ||
-            record.grade.toLowerCase().includes(searchLower)
+            (studentName && studentName.includes(searchLower)) ||
+            (studentRollNo && studentRollNo.includes(searchLower)) ||
+            (subjectName && subjectName.includes(searchLower)) ||
+            (subjectCode && subjectCode.includes(searchLower)) ||
+            (month && month.includes(searchLower)) ||
+            (testName && testName.includes(searchLower)) ||
+            (grade && grade.includes(searchLower))
           );
         });
 
