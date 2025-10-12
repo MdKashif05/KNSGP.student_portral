@@ -159,6 +159,9 @@ Preferred communication style: Simple, everyday language.
 - PostgreSQL session store ensures session persistence across autoscale instances
 - Role-based access control enforced at route level
 - Shared admin password from ADMIN_PASSWORD environment variable (Knsgp2023)
+- **Admin Accounts in Database:**
+  - Primary Admin: username "Admin", password "Knsgp2023"
+  - Additional Admins: Md Kashif, Md Shad, Rajesh Ranjan, Deepak Kumar, Rajan Kumar (all with password "Knsgp2023")
 
 ### Data Storage
 
