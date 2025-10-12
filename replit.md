@@ -21,11 +21,20 @@ Preferred communication style: Simple, everyday language.
 - Recharts for data visualization (attendance and marks charts)
 
 **Design System:**
-- Custom color palette with semantic colors for status communication (success/warning/error/info)
+- **Modern Color Palette (October 2025):** Purple/violet theme (262 hue) for primary colors, replacing previous blue theme
+  - Light mode: Clean backgrounds (220 20% 97%) with subtle purple accents
+  - Dark mode: Professional dark backgrounds (240 10% 8%) with vibrant purple highlights
+  - Primary color: 262 83% 58% (light) / 262 80% 65% (dark)
+- **Custom Gradient Effects:** 
+  - `gradient-text`: Purple-to-pink gradient text for headers
+  - `gradient-bg`: Subtle purple gradient backgrounds
+  - `glass-effect`: Frosted glass effect with backdrop blur
+  - `modern-card`: Enhanced card styling with hover effects
 - Dual theme support (light/dark mode) with CSS custom properties
 - Consistent spacing and typography using Inter font family
 - Component variants using class-variance-authority for maintainable styling
 - Elevation system for hover and active states
+- **Mobile-First Responsive Design:** Full-width buttons on mobile (w-full sm:w-auto), adaptive spacing (p-4 sm:p-6 lg:p-8)
 
 **Key Architectural Decisions:**
 - Role-based UI rendering: Separate dashboard components for admin and student views
