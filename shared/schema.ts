@@ -42,6 +42,7 @@ export const subjects = pgTable("subjects", {
   code: varchar("code", { length: 20 }).notNull().unique(),
   name: text("name").notNull(),
   instructor: text("instructor"),
+  totalMarks: integer("total_marks").notNull().default(20),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
