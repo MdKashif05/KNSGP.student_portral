@@ -67,11 +67,20 @@ Preferred communication style: Simple, everyday language.
   - **Complete SBTE Bihar CSE Syllabus**: Detailed semester-wise syllabus (Semester 1-6) with all subjects, topics, and evaluation patterns extracted from official SBTE Bihar portal
   - **Syllabus Downloads**: Direct links to official SBTE syllabus PDFs and previous year question papers
   - **KNSGP College Information**:
+    - Full Name: Kameshwar Narayan Singh Government Polytechnic (KNSGP), Samastipur
+    - Established: March 29, 2016 (Department of Science & Technology letter no. 890 dated 29.03.2016)
+    - Proposal initiated by Finance Department Resolution No. 96 Vi (2) dt. 03.01.2008
+    - Cabinet approval on 25.01.2016 in item no. 12
+    - Land: 10 acres donated by Roy Ganga Ram Kameshwar Narayan Public Trust
+    - Location: Kishunpur, Tabhka village under Bibhutipur Block, Samastipur, Bihar - 848160
+    - Distance: 36 km from Samastipur HQ, 10 km from Dalsinghsarai Railway Station, 22 km from Rosera
+    - Cultural significance: Famous for Nagpanchami fair
+    - Special Feature: HUB in Centre of Excellence in 3D Printing in collaboration with IIT Patna under Dept. of Science & Technology, Govt. of Bihar
+    - Website: https://www.knsgpsamastipur.ac.in/
+    - Contact: principalknspolysamastipur@gmail.com, Phone: 9430560596
     - Principal: Prof. Aftab Anjum
     - HOD (CSE Department): Prof. Raghvendra Pratap
-    - Establishment details, location, and contact information
-    - Website: https://www.knsgpsamastipur.ac.in/
-    - Special features (Centre of Excellence in 3D Printing with IIT Patna)
+    - Departments: Civil Engineering, Computer Science & Engineering, Electrical Engineering, Electronics Engineering, Mechanical Engineering, Applied Sciences & Humanities
   - **CSE Department Faculty & Subjects**:
     - Programming in C (CSE101) - Dr. Sharma
     - Data Structures (CSE102) - Prof. Kumar
