@@ -99,15 +99,15 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
   return (
     <div className="min-h-screen flex items-center justify-center gradient-bg p-4 sm:p-6 md:p-8">
-      <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-6 lg:gap-12 items-center">
+      <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-6 lg:gap-12 items-center fade-in">
         {/* Left Side - Branding */}
-        <div className="hidden lg:flex flex-col items-center justify-center space-y-8 p-8">
-          <div className="relative">
+        <div className="hidden lg:flex flex-col items-center justify-center space-y-8 p-8 slide-up">
+          <div className="relative hover-lift">
             <div className="absolute inset-0 bg-gradient-to-r from-primary/30 via-purple-500/20 to-pink-500/30 blur-3xl rounded-full animate-pulse"></div>
             <img 
               src={collegeLogo} 
               alt="KNSGP College Logo" 
-              className="relative h-56 w-56 object-contain rounded-3xl shadow-2xl border-2 border-primary/20"
+              className="relative h-56 w-56 object-contain rounded-3xl shadow-2xl border-2 border-primary/20 smooth-transition"
               data-testid="img-college-logo"
             />
           </div>
@@ -116,8 +116,8 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             <h1 className="text-5xl font-bold gradient-text">
               KNSGP College
             </h1>
-            <p className="text-2xl font-semibold text-foreground">Computer Science & Engineering</p>
-            <p className="text-muted-foreground max-w-md text-lg">
+            <p className="text-2xl font-semibold text-foreground smooth-transition">Computer Science & Engineering</p>
+            <p className="text-muted-foreground max-w-md text-lg smooth-transition">
               Kameshwar Narayan Singh Govt Polytechnic College Student Portal
             </p>
           </div>
@@ -136,28 +136,28 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         </div>
 
         {/* Right Side - Login Form */}
-        <div className="w-full">
+        <div className="w-full scale-in">
           {/* Mobile Logo */}
-          <div className="lg:hidden text-center mb-8">
+          <div className="lg:hidden text-center mb-8 fade-in">
             <div className="flex justify-center mb-6">
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-primary/30 to-purple-500/30 blur-2xl rounded-full"></div>
+              <div className="relative hover-lift">
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/30 to-purple-500/30 blur-2xl rounded-full animate-pulse"></div>
                 <img 
                   src={collegeLogo} 
                   alt="KNSGP College Logo" 
-                  className="relative h-28 w-28 object-contain rounded-2xl shadow-xl border-2 border-primary/20"
+                  className="relative h-28 w-28 object-contain rounded-2xl shadow-xl border-2 border-primary/20 smooth-transition"
                   data-testid="img-college-logo-mobile"
                 />
               </div>
             </div>
             <h1 className="text-3xl font-bold gradient-text mb-2">KNSGP College Portal</h1>
-            <p className="text-base text-muted-foreground">Computer Science & Engineering</p>
+            <p className="text-base text-muted-foreground smooth-transition">Computer Science & Engineering</p>
           </div>
 
-          <Card className="border-2 border-primary/20 shadow-2xl backdrop-blur-sm bg-card/95">
+          <Card className="border-2 border-primary/20 shadow-2xl backdrop-blur-sm bg-card/95 hover-lift">
             <CardHeader className="space-y-2 pb-6">
-              <CardTitle className="text-3xl font-bold">Welcome Back</CardTitle>
-              <CardDescription className="text-base">Sign in to access your portal dashboard</CardDescription>
+              <CardTitle className="text-3xl font-bold smooth-transition">Welcome Back</CardTitle>
+              <CardDescription className="text-base smooth-transition">Sign in to access your portal dashboard</CardDescription>
             </CardHeader>
             <CardContent>
               <Tabs defaultValue="student" className="w-full">
