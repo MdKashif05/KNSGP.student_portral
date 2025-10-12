@@ -62,6 +62,7 @@ Preferred communication style: Simple, everyday language.
 **AI-Powered Chatbot:**
 - **EduManage**: Dialog-based chatbot available on both admin and student dashboards
 - **Technology**: OpenAI GPT-4o integration via Replit AI Integrations (no API key required, billed to Replit credits)
+- **Dynamic Database Integration**: Fetches real-time subjects and instructor data from database on each request, ensuring chatbot always has current information
 - **Knowledge Base**: Comprehensive institutional and SBTE Bihar information including:
   - **KNSGP College Information**:
     - Principal: Prof. Aftab Anjum

@@ -600,6 +600,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Import OpenAI client
       const openai = (await import("./lib/openai")).default;
 
+      // Fetch real-time subjects from database
+      const subjects = await storage.getAllSubjects();
+      
+      // Build subjects section dynamically from database
+      const subjectsInfo = subjects.map((subject: any) => 
+        `- ${subject.name} (${subject.code}) - Taught by ${subject.instructor}`
+      ).join('\n');
+
       // SBTE Bihar information context
       const sbteContext = `You are EduManage, a friendly and helpful AI assistant for the CSE Student Portal at Kameshwar Narayan Singh Govt Polytechnic College, affiliated with SBTE Bihar.
 
@@ -630,12 +638,8 @@ COLLEGE LEADERSHIP & FACULTY:
 - Principal: Prof. Aftab Anjum
 - Head of Department (CSE): Prof. Raghvendra Pratap
 
-CSE DEPARTMENT - SUBJECTS & FACULTY:
-- Programming in C (CSE101) - Taught by Dr. Sharma
-- Data Structures (CSE102) - Taught by Prof. Kumar
-- Database Management Systems (CSE103) - Taught by Dr. Singh
-- Web Development (CSE104) - Taught by Prof. Verma
-- Operating Systems (CSE105) - Taught by Dr. Patel
+CSE DEPARTMENT - SUBJECTS & FACULTY (Real-time from Database):
+${subjectsInfo}
 
 SPECIAL INFORMATION:
 - EduManage Chatbot Founders: Mohammad Kashif, Rajan Kumar, and Md Shad (the brilliant minds behind this AI assistant! 🎉)
