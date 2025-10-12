@@ -65,7 +65,6 @@ export default function DataTable({
                             variant="ghost"
                             onClick={() => onEdit(row)}
                             data-testid={`button-edit-${index}`}
-                            className="smooth-transition hover:scale-110"
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -76,7 +75,6 @@ export default function DataTable({
                             variant="ghost"
                             onClick={() => onDelete(row)}
                             data-testid={`button-delete-${index}`}
-                            className="smooth-transition hover:scale-110"
                           >
                             <Trash2 className="h-4 w-4 text-error" />
                           </Button>

@@ -34,7 +34,7 @@ export default function StatCard({ title, value, icon: Icon, description, trend 
               </div>
             )}
           </div>
-          <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center smooth-transition group-hover:bg-primary/20 group-hover:scale-110">
+          <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center smooth-transition group-hover:bg-primary/20">
             <Icon className="h-6 w-6 text-primary smooth-transition" />
           </div>
         </div>

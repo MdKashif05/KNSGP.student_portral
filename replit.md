@@ -30,6 +30,14 @@ Preferred communication style: Simple, everyday language.
   - `gradient-bg`: Subtle purple gradient backgrounds
   - `glass-effect`: Frosted glass effect with backdrop blur
   - `modern-card`: Enhanced card styling with hover effects
+- **Smooth Animations System:**
+  - `fade-in`: Smooth opacity entrance animation
+  - `slide-up`: Upward slide with fade-in effect
+  - `scale-in`: Scale entrance animation
+  - `hover-lift`: Smooth lift effect on hover (translateY + shadow)
+  - `smooth-transition`: Cubic-bezier easing for all transitions
+  - **Important:** No scale transforms on interactive elements (buttons, inputs) to avoid layout shifts
+  - Staggered animations for dashboard cards (0.1s, 0.2s, 0.3s, 0.4s delays)
 - Dual theme support (light/dark mode) with CSS custom properties
 - Consistent spacing and typography using Inter font family
 - Component variants using class-variance-authority for maintainable styling
