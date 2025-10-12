@@ -5,6 +5,10 @@ import AdminSidebar from "./AdminSidebar";
 import StatCard from "./StatCard";
 import AttendanceChart from "./AttendanceChart";
 import MarksChart from "./MarksChart";
+import AttendanceOverviewChart from "./AttendanceOverviewChart";
+import MarksDistributionChart from "./MarksDistributionChart";
+import SubjectPerformanceChart from "./SubjectPerformanceChart";
+import LibraryStatisticsChart from "./LibraryStatisticsChart";
 import DataTable from "./DataTable";
 import LibraryBookCard from "./LibraryBookCard";
 import AddStudentDialog from "./AddStudentDialog";
@@ -77,19 +81,19 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
   // Fetch library books
   const { data: books = [], refetch: refetchBooks } = useQuery<any[]>({
     queryKey: ['/api/library/books'],
-    enabled: activeSection === 'library' || activeSection === 'reports',
+    enabled: activeSection === 'library' || activeSection === 'reports' || activeSection === 'dashboard',
   });
 
   // Fetch attendance records
   const { data: attendance = [], refetch: refetchAttendance } = useQuery<any[]>({
     queryKey: ['/api/attendance'],
-    enabled: activeSection === 'attendance' || activeSection === 'reports',
+    enabled: activeSection === 'attendance' || activeSection === 'reports' || activeSection === 'dashboard',
   });
 
   // Fetch marks records
   const { data: marks = [], refetch: refetchMarks } = useQuery<any[]>({
     queryKey: ['/api/marks'],
-    enabled: activeSection === 'marks' || activeSection === 'reports',
+    enabled: activeSection === 'marks' || activeSection === 'reports' || activeSection === 'dashboard',
   });
 
   // Fetch notices
@@ -330,6 +334,7 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
       case "dashboard":
         return (
           <div className="space-y-6 fade-in">
+            {/* Stats Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="slide-up" style={{animationDelay: '0.1s'}}>
                 <StatCard title="Total Students" value={totalStudents.toString()} icon={Users} description="Active enrollments" />
@@ -342,6 +347,22 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
               </div>
               <div className="slide-up" style={{animationDelay: '0.4s'}}>
                 <StatCard title="Avg Marks" value={avgMarks} icon={Award} />
+              </div>
+            </div>
+
+            {/* Charts Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="slide-up" style={{animationDelay: '0.5s'}}>
+                <AttendanceOverviewChart data={attendance} />
+              </div>
+              <div className="slide-up" style={{animationDelay: '0.6s'}}>
+                <MarksDistributionChart data={marks} />
+              </div>
+              <div className="slide-up" style={{animationDelay: '0.7s'}}>
+                <SubjectPerformanceChart marks={marks} subjects={subjects} />
+              </div>
+              <div className="slide-up" style={{animationDelay: '0.8s'}}>
+                <LibraryStatisticsChart books={books} />
               </div>
             </div>
           </div>

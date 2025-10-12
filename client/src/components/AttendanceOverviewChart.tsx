@@ -6,20 +6,26 @@ interface AttendanceOverviewChartProps {
 }
 
 export default function AttendanceOverviewChart({ data }: AttendanceOverviewChartProps) {
-  // Process data to get monthly attendance stats
+  // Process monthly aggregate data
+  // Group by month and sum present/absent days across all students and subjects
   const monthlyData = data.reduce((acc: any, record: any) => {
-    const month = new Date(record.markedAt).toLocaleDateString('en-US', { month: 'short' });
+    // Use the month field directly (format: "YYYY-MM")
+    const month = record.month ? record.month.substring(5) : 'Unknown'; // Extract MM from YYYY-MM
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthName = monthNames[parseInt(month) - 1] || month;
     
-    if (!acc[month]) {
-      acc[month] = { month, present: 0, absent: 0, total: 0 };
+    if (!acc[record.month]) {
+      acc[record.month] = { 
+        month: monthName, 
+        present: 0, 
+        absent: 0, 
+        total: 0 
+      };
     }
     
-    if (record.status === 'present') {
-      acc[month].present++;
-    } else {
-      acc[month].absent++;
-    }
-    acc[month].total++;
+    acc[record.month].present += record.presentDays || 0;
+    acc[record.month].total += record.totalDays || 0;
+    acc[record.month].absent += (record.totalDays - record.presentDays) || 0;
     
     return acc;
   }, {});
@@ -28,7 +34,7 @@ export default function AttendanceOverviewChart({ data }: AttendanceOverviewChar
     month: item.month,
     present: item.present,
     absent: item.absent,
-    percentage: ((item.present / item.total) * 100).toFixed(1),
+    percentage: item.total > 0 ? ((item.present / item.total) * 100).toFixed(1) : '0',
   }));
 
   return (
