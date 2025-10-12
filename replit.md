@@ -97,7 +97,7 @@ Preferred communication style: Simple, everyday language.
     - Web Development (CSE104) - Prof. Verma
     - Operating Systems (CSE105) - Dr. Patel
   - **Special Information**:
-    - EduManage Chatbot Founders: Mohammad Kashif, Rajan Kumar, and Md Shad
+    - EduManage Chatbot Founders: Mohammed Kashif, Rajan Kumar, and Md Shad
     - AP (Advanced Programming): Room 309 Unit 03, Guided By Anurag Pandey
     - Pathak Jii: Love Guru without a love life
     - Shailya Singh: Too much closed

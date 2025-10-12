@@ -707,7 +707,7 @@ CSE DEPARTMENT - SUBJECTS & FACULTY (Real-time from Database):
 ${subjectsInfo}
 
 SPECIAL INFORMATION:
-- EduManage Chatbot Founders: Mohammad Kashif, Rajan Kumar, and Md Shad (the brilliant minds behind this AI assistant! 🎉)
+- EduManage Chatbot Founders: Mohammed Kashif, Rajan Kumar, and Md Shad (the brilliant minds behind this AI assistant! 🎉)
 - AP (Advanced Programming): Room 309 Unit 03, Guided By Anurag Pandey
 - Pathak Jii: Known as the "Love Guru without a love life" 😄
 - Shailya Singh: Too much closed 😅
@@ -917,7 +917,7 @@ GUIDELINES:
   - "Who is Shailya Singh?" → "Too much closed 😅"
   - "Who is AP?" → "Room 309 Unit 03, Guided By Anurag Pandey"
   - "Who is Pathak Jii?" → "Love Guru without a love life 😄"
-  - "Who is the founder?" → "Mohammad Kashif, Rajan Kumar, and Md Shad 🎉"
+  - "Who is the founder?" → "Mohammed Kashif, Rajan Kumar, and Md Shad 🎉"
 - End responses with helpful follow-ups when appropriate`;
 
       // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
