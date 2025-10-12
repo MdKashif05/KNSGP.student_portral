@@ -27,7 +27,8 @@ export default function Chatbot() {
 
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
-      return await apiRequest("POST", "/api/chat", { message });
+      const response = await apiRequest("POST", "/api/chat", { message });
+      return await response.json();
     },
     onSuccess: (data: any) => {
       const responseContent = data?.response || "No response received";
@@ -80,17 +81,17 @@ export default function Chatbot() {
       {!isOpen && (
         <Button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 h-14 w-14 rounded-full shadow-lg z-[100] hover:shadow-xl transition-shadow"
+          className="fixed bottom-6 right-6 h-12 w-12 rounded-full shadow-lg z-[100] hover:shadow-xl transition-all"
           size="icon"
           data-testid="button-open-chatbot"
         >
-          <MessageCircle className="h-6 w-6" />
+          <MessageCircle className="h-5 w-5" />
         </Button>
       )}
 
       {/* Chat Window */}
       {isOpen && (
-        <Card className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 w-[calc(100vw-2rem)] sm:w-96 h-[500px] max-h-[calc(100vh-2rem)] shadow-2xl z-[100] flex flex-col fade-in">
+        <Card className="fixed bottom-20 right-6 w-80 h-[450px] shadow-2xl z-[100] flex flex-col fade-in border-2">
           <CardHeader className="flex flex-row items-center justify-between p-4 border-b">
             <div className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
