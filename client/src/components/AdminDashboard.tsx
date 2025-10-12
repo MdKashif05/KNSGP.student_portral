@@ -21,10 +21,11 @@ import UploadMarksCSVDialog from "./UploadMarksCSVDialog";
 import AddNoticeDialog from "./AddNoticeDialog";
 import EditNoticeDialog from "./EditNoticeDialog";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
-import { Users, TrendingUp, BookOpen, Award, Plus, Upload, Pencil } from "lucide-react";
+import { Users, TrendingUp, BookOpen, Award, Plus, Upload, Pencil, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 
@@ -52,6 +53,8 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
   const [itemToEdit, setItemToEdit] = useState<any>(null);
   const [itemToDelete, setItemToDelete] = useState<any>(null);
   const [deleteType, setDeleteType] = useState<'student' | 'subject' | 'book' | 'attendance' | 'marks' | 'notice' | null>(null);
+  const [attendanceSearch, setAttendanceSearch] = useState("");
+  const [marksSearch, setMarksSearch] = useState("");
   const { toast } = useToast();
 
   const style = {
@@ -387,6 +390,23 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
         );
 
       case "attendance":
+        // Filter attendance based on search term
+        const filteredAttendance = attendance.filter((record: any) => {
+          if (!attendanceSearch.trim()) return true;
+          
+          const student = students.find(s => s.id === record.studentId);
+          const subject = subjects.find(s => s.id === record.subjectId);
+          const searchLower = attendanceSearch.toLowerCase();
+          
+          return (
+            student?.name.toLowerCase().includes(searchLower) ||
+            student?.rollNo.toLowerCase().includes(searchLower) ||
+            subject?.name.toLowerCase().includes(searchLower) ||
+            subject?.code.toLowerCase().includes(searchLower) ||
+            record.month.includes(searchLower)
+          );
+        });
+
         return (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
@@ -402,11 +422,25 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
                 Add Attendance
               </Button>
             </div>
+            
+            {/* Search Bar */}
+            <div className="relative w-full md:w-96">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search by student name, roll no, subject..."
+                value={attendanceSearch}
+                onChange={(e) => setAttendanceSearch(e.target.value)}
+                className="pl-10"
+                data-testid="input-search-attendance"
+              />
+            </div>
+
             <DataTable
               title="Attendance Records"
-              description="Monthly attendance tracking"
+              description={`Showing ${filteredAttendance.length} of ${attendance.length} records`}
               columns={attendanceColumns}
-              data={attendance}
+              data={filteredAttendance}
               actions={true}
               onEdit={(row) => handleEdit('attendance', row)}
               onDelete={(row) => handleDelete('attendance', row)}
@@ -415,6 +449,25 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
         );
 
       case "marks":
+        // Filter marks based on search term
+        const filteredMarks = marks.filter((record: any) => {
+          if (!marksSearch.trim()) return true;
+          
+          const student = students.find(s => s.id === record.studentId);
+          const subject = subjects.find(s => s.id === record.subjectId);
+          const searchLower = marksSearch.toLowerCase();
+          
+          return (
+            student?.name.toLowerCase().includes(searchLower) ||
+            student?.rollNo.toLowerCase().includes(searchLower) ||
+            subject?.name.toLowerCase().includes(searchLower) ||
+            subject?.code.toLowerCase().includes(searchLower) ||
+            record.month.includes(searchLower) ||
+            record.testName.toLowerCase().includes(searchLower) ||
+            record.grade.toLowerCase().includes(searchLower)
+          );
+        });
+
         return (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
@@ -440,11 +493,25 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
                 </Button>
               </div>
             </div>
+
+            {/* Search Bar */}
+            <div className="relative w-full md:w-96">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search by student, subject, test name..."
+                value={marksSearch}
+                onChange={(e) => setMarksSearch(e.target.value)}
+                className="pl-10"
+                data-testid="input-search-marks"
+              />
+            </div>
+
             <DataTable
               title="Marks Records"
-              description="Student marks and grades"
+              description={`Showing ${filteredMarks.length} of ${marks.length} records`}
               columns={marksColumns}
-              data={marks}
+              data={filteredMarks}
               actions={true}
               onEdit={(row) => handleEdit('marks', row)}
               onDelete={(row) => handleDelete('marks', row)}
