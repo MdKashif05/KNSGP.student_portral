@@ -68,10 +68,15 @@ Preferred communication style: Simple, everyday language.
   - Contact information and portal links
   - General polytechnic education guidance
 - **UI Features**: 
-  - Floating button (320px width, 450px height window)
+  - Floating button: 56px circle, positioned bottom-right with responsive spacing
+  - Chat window: Full-width on mobile (minus padding), 384px on desktop
+  - Height: 500px with max-height constraint (100vh - 10rem) for viewport safety
+  - Positioned higher (bottom-20 mobile, bottom-24 desktop) to avoid content overlap
   - Real-time message streaming with timestamps
   - Loading indicators and error handling
-  - Positioned bottom-right (bottom-20 right-6) to avoid content overlap
+- **Responsive Design**:
+  - Mobile: Full-width chat window, bottom-4 right-4 positioning
+  - Desktop: Fixed 384px width, bottom-6 right-6 positioning
 - **Personality**: Conversational and friendly, responds to casual greetings while providing accurate SBTE information
 
 ### Backend Architecture

@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MessageCircle, X, Send, Bot, User } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { MessageCircle, Send, Bot, User } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -78,38 +78,28 @@ export default function Chatbot() {
   return (
     <>
       {/* Floating Chat Button */}
-      {!isOpen && (
-        <Button
-          onClick={() => setIsOpen(true)}
-          className="fixed bottom-4 right-4 md:bottom-6 md:right-6 h-14 w-14 rounded-full shadow-lg z-[100] hover:shadow-xl transition-all"
-          size="icon"
-          data-testid="button-open-chatbot"
-        >
-          <MessageCircle className="h-6 w-6" />
-        </Button>
-      )}
+      <Button
+        onClick={() => setIsOpen(true)}
+        className="fixed bottom-4 right-4 h-14 w-14 rounded-full shadow-lg z-50 hover:shadow-xl transition-all"
+        size="icon"
+        data-testid="button-open-chatbot"
+      >
+        <MessageCircle className="h-6 w-6" />
+      </Button>
 
-      {/* Chat Window */}
-      {isOpen && (
-        <Card className="fixed bottom-20 right-4 md:bottom-24 md:right-6 w-[calc(100vw-2rem)] md:w-96 h-[500px] max-h-[calc(100vh-10rem)] shadow-2xl z-[100] flex flex-col fade-in border-2">
-          <CardHeader className="flex flex-row items-center justify-between p-4 border-b">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <Bot className="h-5 w-5 text-primary" />
+      {/* Chat Dialog */}
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent className="w-[95vw] max-w-2xl h-[80vh] max-h-[600px] flex flex-col p-0">
+          <DialogHeader className="px-6 py-4 border-b">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Bot className="h-6 w-6 text-primary" />
               </div>
-              <CardTitle className="text-lg">SBTE Assistant</CardTitle>
+              <DialogTitle className="text-xl">SBTE Assistant</DialogTitle>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsOpen(false)}
-              data-testid="button-close-chatbot"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </CardHeader>
+          </DialogHeader>
 
-          <CardContent className="flex-1 p-0 flex flex-col">
+          <div className="flex-1 flex flex-col overflow-hidden">
             <ScrollArea className="flex-1 p-4" ref={scrollRef}>
               <div className="space-y-4">
                 {messages.map((msg, idx) => (
@@ -164,7 +154,7 @@ export default function Chatbot() {
               </div>
             </ScrollArea>
 
-            <div className="border-t p-4">
+            <div className="border-t p-4 bg-background">
               <div className="flex gap-2">
                 <Input
                   value={input}
@@ -173,6 +163,7 @@ export default function Chatbot() {
                   placeholder="Ask about exams, courses, syllabus..."
                   disabled={chatMutation.isPending}
                   data-testid="input-chat-message"
+                  className="flex-1"
                 />
                 <Button
                   onClick={handleSend}
@@ -184,9 +175,9 @@ export default function Chatbot() {
                 </Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
