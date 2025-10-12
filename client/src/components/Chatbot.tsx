@@ -91,7 +91,7 @@ export default function Chatbot() {
 
       {/* Chat Window */}
       {isOpen && (
-        <Card className="fixed bottom-20 right-6 w-80 h-[450px] shadow-2xl z-[100] flex flex-col fade-in border-2">
+        <Card className="fixed bottom-6 right-6 w-80 h-[480px] shadow-2xl z-[100] flex flex-col fade-in border-2">
           <CardHeader className="flex flex-row items-center justify-between p-4 border-b">
             <div className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
