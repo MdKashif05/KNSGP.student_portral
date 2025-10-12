@@ -60,23 +60,24 @@ Preferred communication style: Simple, everyday language.
 - Session-based authentication state management
 
 **AI-Powered Chatbot:**
-- **SBTE Assistant**: Floating chatbot component available on both admin and student dashboards
+- **SBTE Assistant**: Dialog-based chatbot available on both admin and student dashboards
 - **Technology**: OpenAI GPT-4o integration via Replit AI Integrations (no API key required, billed to Replit credits)
 - **Knowledge Base**: Comprehensive SBTE Bihar information including:
   - Current exam schedules and registration deadlines (December 2025 exams)
   - Course details and syllabus information
   - Contact information and portal links
   - General polytechnic education guidance
-- **UI Features**: 
-  - Floating button: 56px circle, positioned bottom-right with responsive spacing
-  - Chat window: Full-width on mobile (minus padding), 384px on desktop
-  - Height: 500px with max-height constraint (100vh - 10rem) for viewport safety
-  - Positioned higher (bottom-20 mobile, bottom-24 desktop) to avoid content overlap
+- **UI Design**: 
+  - **Launcher Button**: Fixed 56px circular button at bottom-4 right-4
+  - **Dialog Modal**: Centered Shadcn Dialog component (replaces floating overlay)
+    - Width: 95vw on mobile, max-width 672px (2xl) on desktop
+    - Height: 80vh with max-height 600px
+    - Backdrop overlay dims dashboard content when active
+    - Prevents content overlap - modal clearly takes focus in center of viewport
   - Real-time message streaming with timestamps
   - Loading indicators and error handling
-- **Responsive Design**:
-  - Mobile: Full-width chat window, bottom-4 right-4 positioning
-  - Desktop: Fixed 384px width, bottom-6 right-6 positioning
+  - Accessible: ESC key closes, focus management, backdrop click dismissal
+- **User Experience**: Click launcher → Dialog opens centered → Dashboard visible behind backdrop → Close with X/ESC/backdrop
 - **Personality**: Conversational and friendly, responds to casual greetings while providing accurate SBTE information
 
 ### Backend Architecture
