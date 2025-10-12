@@ -601,8 +601,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const openai = (await import("./lib/openai")).default;
 
       // SBTE Bihar information context
-      const sbteContext = `
-You are an AI assistant for the CSE Student Portal at Kameshwar Narayan Singh Govt Polytechnic College, affiliated with SBTE Bihar (State Board of Technical Education, Bihar).
+      const sbteContext = `You are an AI assistant for the CSE Student Portal at Kameshwar Narayan Singh Govt Polytechnic College, affiliated with SBTE Bihar (State Board of Technical Education, Bihar).
 
 Current SBTE Bihar Information (October 2025):
 
@@ -636,12 +635,11 @@ COURSES & PROGRAMS:
 - Certificate programs in technology
 - Focus areas: Computer Science Engineering, Mechanical, Civil, Electrical, Electronics, etc.
 
-Provide helpful, accurate responses about SBTE Bihar, exam schedules, registration, courses, and general polytechnic education information. If asked about specific student data or portal access, guide them to the appropriate official portals or admin.
-`;
+Provide helpful, accurate responses about SBTE Bihar, exam schedules, registration, courses, and general polytechnic education information. If asked about specific student data or portal access, guide them to the appropriate official portals or admin.`;
 
       // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
       const completion = await openai.chat.completions.create({
-        model: "gpt-5",
+        model: "gpt-4o",
         messages: [
           {
             role: "system",
@@ -652,7 +650,7 @@ Provide helpful, accurate responses about SBTE Bihar, exam schedules, registrati
             content: message
           }
         ],
-        max_completion_tokens: 500,
+        max_tokens: 500,
       });
 
       const response = completion.choices[0]?.message?.content || "I'm sorry, I couldn't process that request.";

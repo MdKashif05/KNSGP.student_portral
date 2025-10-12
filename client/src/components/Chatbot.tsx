@@ -30,11 +30,12 @@ export default function Chatbot() {
       return await apiRequest("POST", "/api/chat", { message });
     },
     onSuccess: (data: any) => {
+      const responseContent = data?.response || "No response received";
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: data.response,
+          content: responseContent,
           timestamp: new Date(),
         },
       ]);
