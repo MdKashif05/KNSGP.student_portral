@@ -98,7 +98,12 @@ Preferred communication style: Simple, everyday language.
   - Loading indicators and error handling
   - Accessible: ESC key closes, focus management, backdrop click dismissal, screen reader support
 - **User Experience**: Click launcher → Dialog opens centered → Dashboard visible behind backdrop → Close with X/ESC/backdrop
-- **Personality**: Conversational and friendly, responds to casual greetings while providing accurate education information
+- **Personality**: Conversational and friendly like WhatsApp chats
+  - Uses casual greetings: "Hii! 👋", "Hey there! 😊", "Perfect! ✨"
+  - Natural emoji usage throughout responses
+  - Conversational phrases: "Great question!", "Sure thing!", "Happy to help! 👍"
+  - Responds warmly to thanks and acknowledgments
+  - Maintains accuracy while being friendly and approachable
 
 ### Backend Architecture
 

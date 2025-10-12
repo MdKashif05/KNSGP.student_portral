@@ -18,7 +18,7 @@ export default function Chatbot() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "Hello! I'm EduManage, your education assistant. I can help you with:\n• Exam schedules and registration\n• Syllabus information\n• Course details\n• General information about polytechnic education\n\nHow can I help you today?",
+      content: "Hii! 👋 I'm EduManage, your friendly education assistant! 😊\n\nI can help you with:\n• Exam schedules & registration 📚\n• College info & faculty details 🏫\n• Course & syllabus info 📖\n• SBTE Bihar updates 📋\n\nWhat would you like to know?",
       timestamp: new Date(),
     },
   ]);
