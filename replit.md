@@ -68,12 +68,21 @@ Preferred communication style: Simple, everyday language.
   - Contact information and portal links
   - General polytechnic education guidance
 - **UI Design**: 
-  - **Launcher Button**: Fixed 56px circular button at bottom-4 right-4 with z-index 9999 for maximum visibility
+  - **Launcher Button**: Enhanced visibility with purple gradient and pulse animation
+    - Size: 64px (h-16 w-16) for prominent visibility
+    - Gradient: from-primary to-purple-600 with purple shadow glow
+    - Pulse animation with 2-second duration
+    - Hover effect: scales to 110% with enhanced shadow
+    - Position: fixed bottom-4 right-4 with z-index 9999
   - **Dialog Modal**: Centered Shadcn Dialog component (replaces floating overlay)
     - Width: 95vw on mobile, max-width 672px (2xl) on desktop
     - Height: 80vh with max-height 600px
     - Backdrop overlay dims dashboard content when active
     - Prevents content overlap - modal clearly takes focus in center of viewport
+  - **Auto-Scroll Functionality**: 
+    - Automatically scrolls to bottom when new messages arrive
+    - Scrolls to bottom as user types to keep input visible
+    - Smooth scroll behavior for better UX
   - Real-time message streaming with timestamps
   - Loading indicators and error handling
   - Accessible: ESC key closes, focus management, backdrop click dismissal, screen reader support

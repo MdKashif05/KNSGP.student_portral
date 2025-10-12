@@ -23,7 +23,16 @@ export default function Chatbot() {
     },
   ]);
   const [input, setInput] = useState("");
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    if (scrollAreaRef.current) {
+      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollContainer) {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      }
+    }
+  };
 
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
@@ -69,22 +78,29 @@ export default function Chatbot() {
     chatMutation.mutate(userMessage);
   };
 
+  // Auto-scroll when messages change
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    scrollToBottom();
   }, [messages]);
+
+  // Auto-scroll when user is typing
+  useEffect(() => {
+    if (input) {
+      scrollToBottom();
+    }
+  }, [input]);
 
   return (
     <>
-      {/* Floating Chat Button */}
+      {/* Floating Chat Button with gradient and pulse effect */}
       <Button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-4 right-4 h-14 w-14 rounded-full shadow-lg z-[9999] hover:shadow-xl transition-all"
+        className="fixed bottom-4 right-4 h-16 w-16 rounded-full shadow-2xl z-[9999] bg-gradient-to-br from-primary to-purple-600 hover:shadow-purple-500/50 hover:scale-110 transition-all duration-300 animate-pulse"
         size="icon"
         data-testid="button-open-chatbot"
+        style={{ animationDuration: '2s' }}
       >
-        <MessageCircle className="h-6 w-6" />
+        <MessageCircle className="h-7 w-7 text-white" />
       </Button>
 
       {/* Chat Dialog */}
@@ -103,7 +119,7 @@ export default function Chatbot() {
           </DialogHeader>
 
           <div className="flex-1 flex flex-col overflow-hidden">
-            <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+            <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
               <div className="space-y-4">
                 {messages.map((msg, idx) => (
                   <div
