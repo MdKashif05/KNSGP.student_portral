@@ -608,6 +608,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `- ${subject.name} (${subject.code}) - Taught by ${subject.instructor}`
       ).join('\n');
 
+      // Fetch live SBTE Bihar website data for current information
+      let livesbteData = '\n\nLIVE SBTE BIHAR UPDATES:\n';
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+        
+        const sbteResponse = await fetch('https://sbte.bihar.gov.in/', {
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        
+        if (sbteResponse.ok) {
+          const sbteHtml = await sbteResponse.text();
+          
+          // Extract announcements using multiple patterns to be more robust
+          const patterns = [
+            /Important\s+Announcement([\s\S]{0,1000})/i,
+            /Latest\s+Notice([\s\S]{0,1000})/i,
+            /News([\s\S]{0,1000})/i,
+            /<h2[^>]*>.*?(Announcement|Notice|Update).*?<\/h2>([\s\S]{0,1000})/i
+          ];
+          
+          let foundMatch = false;
+          for (const pattern of patterns) {
+            const match = sbteHtml.match(pattern);
+            if (match) {
+              // For h2 pattern, prefer match[2] (content after heading), then match[1], then match[0]
+              const extractedText = match[2] || match[1] || match[0];
+              const cleanText = extractedText
+                .replace(/<[^>]*>/g, ' ')  // Remove HTML tags
+                .replace(/\s+/g, ' ')       // Normalize whitespace
+                .replace(/&nbsp;/g, ' ')    // Replace HTML entities
+                .trim()
+                .substring(0, 400);
+              
+              if (cleanText.length > 50) {
+                livesbteData += `${cleanText}...\n\nℹ️ For complete latest updates, visit: https://sbte.bihar.gov.in/\n`;
+                foundMatch = true;
+                console.log('Successfully extracted live SBTE data:', cleanText.substring(0, 100));
+                break;
+              }
+            }
+          }
+          
+          if (!foundMatch) {
+            livesbteData += 'Visit https://sbte.bihar.gov.in/ for the latest official announcements and updates.\n';
+          }
+        } else {
+          livesbteData += 'Visit https://sbte.bihar.gov.in/ for the latest official announcements and updates.\n';
+        }
+      } catch (error: any) {
+        if (error.name === 'AbortError') {
+          console.log('SBTE fetch timeout after 3 seconds');
+        } else {
+          console.log('Could not fetch live SBTE data:', error);
+        }
+        livesbteData += 'For the most current SBTE Bihar announcements, exam schedules, and registration updates, please visit the official website: https://sbte.bihar.gov.in/\n';
+      }
+
       // SBTE Bihar information context
       const sbteContext = `You are EduManage, a friendly and helpful AI assistant for the CSE Student Portal at Kameshwar Narayan Singh Govt Polytechnic College, affiliated with SBTE Bihar.
 
@@ -833,11 +892,14 @@ OFFICIAL REFERENCES:
 - SBTE Bihar Official Website: https://sbte.bihar.gov.in/
 - CSE Syllabus PDF: https://sbte.bihar.gov.in/uploads/Syllabus/2024-25/S02/18.%20Computer%20Science%20&%20Engineering.pdf
 
+${livesbteData}
+
 GUIDELINES:
 - Respond to greetings casually like WhatsApp: "Hii! 👋 I'm EduManage! How can I help you today? 😊"
 - When someone says "perfect" or "thanks", respond enthusiastically: "Perfect! ✨", "You're welcome! 😊", "Happy to help! 👍"
 - For questions, start with casual phrases: "Great question!", "Sure thing!", "Absolutely!"
 - Keep responses conversational and friendly, not robotic
+- IMPORTANT: You have access to LIVE, REAL-TIME data from SBTE Bihar website. Always check the "LATEST UPDATES FROM SBTE BIHAR WEBSITE (Real-time)" section above for current announcements and information
 - CRITICAL: Always provide COMPLETE, DETAILED information from the knowledge base above. Don't just give brief answers or links - give full details about:
   - Syllabus: Complete semester-wise subjects with all topics
   - Departments: All branches with codes, duration, and focus areas
