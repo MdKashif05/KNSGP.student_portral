@@ -10,13 +10,13 @@ export default function SubjectPerformanceChart({ marks, subjects }: SubjectPerf
   // Calculate average marks per subject
   const subjectPerformance = subjects.map((subject: any) => {
     const subjectMarks = marks.filter((mark: any) => mark.subjectId === subject.id);
-    const avgMarks = subjectMarks.length > 0
-      ? subjectMarks.reduce((sum: number, mark: any) => sum + (mark.midterm + mark.endterm + mark.internal), 0) / subjectMarks.length
+    const avgPercentage = subjectMarks.length > 0
+      ? subjectMarks.reduce((sum: number, mark: any) => sum + (mark.percentage || 0), 0) / subjectMarks.length
       : 0;
 
     return {
       name: subject.code || subject.name,
-      average: parseFloat(avgMarks.toFixed(1)),
+      average: parseFloat(avgPercentage.toFixed(1)),
       students: subjectMarks.length,
     };
   });

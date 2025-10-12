@@ -17,8 +17,8 @@ export default function MarksDistributionChart({ data }: MarksDistributionChartP
 
   const distribution = ranges.map(({ range, min, max }) => {
     const count = data.filter((mark: any) => {
-      const total = mark.midterm + mark.endterm + mark.internal;
-      return total >= min && total <= max;
+      const percentage = mark.percentage || 0;
+      return percentage >= min && percentage <= max;
     }).length;
 
     return {
