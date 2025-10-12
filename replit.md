@@ -59,6 +59,21 @@ Preferred communication style: Simple, everyday language.
 - Optimistic UI updates with React Query mutations
 - Session-based authentication state management
 
+**AI-Powered Chatbot:**
+- **SBTE Assistant**: Floating chatbot component available on both admin and student dashboards
+- **Technology**: OpenAI GPT-4o integration via Replit AI Integrations (no API key required, billed to Replit credits)
+- **Knowledge Base**: Comprehensive SBTE Bihar information including:
+  - Current exam schedules and registration deadlines (December 2025 exams)
+  - Course details and syllabus information
+  - Contact information and portal links
+  - General polytechnic education guidance
+- **UI Features**: 
+  - Floating button (320px width, 450px height window)
+  - Real-time message streaming with timestamps
+  - Loading indicators and error handling
+  - Positioned bottom-right (bottom-20 right-6) to avoid content overlap
+- **Personality**: Conversational and friendly, responds to casual greetings while providing accurate SBTE information
+
 ### Backend Architecture
 
 **Technology Stack:**
@@ -74,6 +89,10 @@ Preferred communication style: Simple, everyday language.
 - Session-based authentication (no JWT tokens)
 - Centralized error handling and response formatting
 - Request/response logging for debugging
+- **Chatbot Endpoint**: POST /api/chat (authentication-protected)
+  - Accepts user messages and returns AI-generated responses
+  - Injects SBTE Bihar context into GPT-4o model
+  - Uses Replit AI Integrations for OpenAI access
 
 **Authentication System:**
 - Dual login system: Admin (username/password) and Student (roll number/name)
