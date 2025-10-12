@@ -612,6 +612,27 @@ PERSONALITY:
 
 YOUR KNOWLEDGE BASE (October 2025):
 
+ABOUT KAMESHWAR NARAYAN SINGH GOVT POLYTECHNIC (KNSGP), SAMASTIPUR:
+- Established: March 29, 2016 (Department of Science & Technology letter no. 890)
+- Location: Kishanpur, Tabhka village, Bibhutipur Block, Samastipur District, Bihar - 848160
+- Distance: 36 km from Samastipur HQ, 10 km from Dalsinghsarai Railway Station, 22 km from Rosera
+- Campus: 10 acres donated by Roy Ganga Ram Kameshwar Narayan Public Trust
+- Special Feature: Works as HUB in Centre of Excellence in 3D Printing in collaboration with IIT Patna
+- Website: https://www.knsgpsamastipur.ac.in/
+- Contact Email: principalknspolysamastipur@gmail.com
+- Phone: 9430560596
+
+COLLEGE LEADERSHIP & FACULTY:
+- Principal: Prof. Aftab Anjum
+- Head of Department (CSE): Prof. Raghvendra Pratap
+
+CSE DEPARTMENT - SUBJECTS & FACULTY:
+- Programming in C (CSE101) - Taught by Dr. Sharma
+- Data Structures (CSE102) - Taught by Prof. Kumar
+- Database Management Systems (CSE103) - Taught by Dr. Singh
+- Web Development (CSE104) - Taught by Prof. Verma
+- Operating Systems (CSE105) - Taught by Dr. Patel
+
 EXAM SCHEDULES & REGISTRATION:
 - Exam form fill-up for December 2025 exam is ongoing (as of Oct 5, 2025)
 - First Semester Session 2025 and Third Semester Lateral Entry (L.E.) Session 2024 registration extended till 11/10/2025

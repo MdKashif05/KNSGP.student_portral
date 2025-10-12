@@ -62,10 +62,21 @@ Preferred communication style: Simple, everyday language.
 **AI-Powered Chatbot:**
 - **EduManage**: Dialog-based chatbot available on both admin and student dashboards
 - **Technology**: OpenAI GPT-4o integration via Replit AI Integrations (no API key required, billed to Replit credits)
-- **Knowledge Base**: Comprehensive SBTE Bihar information including:
+- **Knowledge Base**: Comprehensive institutional and SBTE Bihar information including:
+  - **KNSGP College Information**:
+    - Principal: Prof. Aftab Anjum
+    - HOD (CSE Department): Prof. Raghvendra Pratap
+    - Establishment details, location, and contact information
+    - Website: https://www.knsgpsamastipur.ac.in/
+    - Special features (Centre of Excellence in 3D Printing with IIT Patna)
+  - **CSE Department Faculty & Subjects**:
+    - Programming in C (CSE101) - Dr. Sharma
+    - Data Structures (CSE102) - Prof. Kumar
+    - Database Management Systems (CSE103) - Dr. Singh
+    - Web Development (CSE104) - Prof. Verma
+    - Operating Systems (CSE105) - Dr. Patel
   - Current exam schedules and registration deadlines (December 2025 exams)
-  - Course details and syllabus information
-  - Contact information and portal links
+  - SBTE Bihar course details, syllabus, and portal links
   - General polytechnic education guidance
 - **UI Design**: 
   - **Launcher Button**: Enhanced visibility with purple gradient and pulse animation
