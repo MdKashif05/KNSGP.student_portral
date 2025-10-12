@@ -587,6 +587,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== CHATBOT ROUTES ==========
+  
+  app.post("/api/chat", requireAuth, async (req, res) => {
+    try {
+      const { message } = req.body;
+      
+      if (!message || typeof message !== 'string') {
+        return res.status(400).json({ message: "Message is required" });
+      }
+
+      // Import OpenAI client
+      const openai = (await import("./lib/openai")).default;
+
+      // SBTE Bihar information context
+      const sbteContext = `
+You are an AI assistant for the CSE Student Portal at Kameshwar Narayan Singh Govt Polytechnic College, affiliated with SBTE Bihar (State Board of Technical Education, Bihar).
+
+Current SBTE Bihar Information (October 2025):
+
+EXAM SCHEDULES & REGISTRATION:
+- Exam form fill-up for December 2025 exam is ongoing (as of Oct 5, 2025)
+- First Semester Session 2025 and Third Semester Lateral Entry (L.E.) Session 2024 registration extended till 11/10/2025
+- Registration was open from 22.09.2025 to 04.10.2025, now extended
+
+RECENT ANNOUNCEMENTS:
+- Polytechnic State Topper List 2025 announced (Sept 6)
+- Government Engineering State Topper List 2025 announced (Sept 6)
+- Hiring of diploma engineers by JTEKT India Ltd. (Aug 17, 2025)
+- Pool Campus Placement drives ongoing (Nagata Auto Engineering India, Macleods Pharmaceuticals)
+
+ABOUT SBTE BIHAR:
+- Responsible for evaluation and certification of six-semester Diploma Courses
+- Affiliated polytechnic institutions across Bihar
+- Constituted on May 31, 1955
+- Under Science, Technology and Technical Education Department, Government of Bihar
+- Contact: Toll Free 18002020305, Email: sbtebihar@bihar.gov.in
+- Address: 4th Floor, Technology Bhawan, Vishweshariya Bhawan Campus, Bailey Road Patna, Bihar PIN - 800015
+
+AVAILABLE PORTALS:
+- EMS Portal (sbteonline.bihar.gov.in/login)
+- LMS Portal - Moodle (sbtelms.bihar.gov.in)
+- Affiliation Portal
+- Document Verification Status portal
+
+COURSES & PROGRAMS:
+- Six-semester Diploma Courses in various engineering fields
+- Certificate programs in technology
+- Focus areas: Computer Science Engineering, Mechanical, Civil, Electrical, Electronics, etc.
+
+Provide helpful, accurate responses about SBTE Bihar, exam schedules, registration, courses, and general polytechnic education information. If asked about specific student data or portal access, guide them to the appropriate official portals or admin.
+`;
+
+      // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+      const completion = await openai.chat.completions.create({
+        model: "gpt-5",
+        messages: [
+          {
+            role: "system",
+            content: sbteContext
+          },
+          {
+            role: "user",
+            content: message
+          }
+        ],
+        max_completion_tokens: 500,
+      });
+
+      const response = completion.choices[0]?.message?.content || "I'm sorry, I couldn't process that request.";
+      
+      res.json({ response });
+    } catch (error: any) {
+      console.error("Chatbot error:", error);
+      res.status(500).json({ 
+        message: "Error processing chat message", 
+        error: error.message 
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
