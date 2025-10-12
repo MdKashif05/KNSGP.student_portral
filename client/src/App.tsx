@@ -83,21 +83,19 @@ function App() {
         {!user.role ? (
           <LoginPage onLogin={handleLogin} />
         ) : user.role === 'admin' ? (
-          <>
-            <AdminDashboard adminName={user.name!} onLogout={handleLogout} />
-            <Chatbot />
-          </>
+          <AdminDashboard adminName={user.name!} onLogout={handleLogout} />
         ) : (
-          <>
-            <StudentDashboard 
-              studentName={user.name!} 
-              rollNo={user.rollNo!}
-              studentId={user.id!}
-              onLogout={handleLogout} 
-            />
-            <Chatbot />
-          </>
+          <StudentDashboard 
+            studentName={user.name!} 
+            rollNo={user.rollNo!}
+            studentId={user.id!}
+            onLogout={handleLogout} 
+          />
         )}
+        
+        {/* Chatbot - Always at root level for proper mobile positioning */}
+        {user.role && <Chatbot />}
+        
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>
