@@ -64,8 +64,8 @@ Preferred communication style: Simple, everyday language.
 - **Technology**: OpenAI GPT-4o integration via Replit AI Integrations (no API key required, billed to Replit credits)
 - **Dynamic Database Integration**: Fetches real-time subjects and instructor data from database on each request, ensuring chatbot always has current information
 - **Knowledge Base**: Comprehensive institutional and SBTE Bihar information including:
-  - **SBTE Bihar Syllabus Links**: Directs students to official SBTE Bihar website for accurate syllabus information (no static syllabus content to avoid outdated data)
-  - **Official Links Provided**: CSE Syllabus PDF, SBTE Syllabus page, and previous year question papers from official SBTE Bihar portal
+  - **Complete SBTE Bihar CSE Syllabus**: Detailed semester-wise syllabus (Semester 1-6) with all subjects, topics, and evaluation patterns
+  - **Official References**: Links to SBTE Bihar website and official CSE syllabus PDF for additional resources
   - **KNSGP College Information**:
     - Full Name: Kameshwar Narayan Singh Government Polytechnic (KNSGP), Samastipur
     - Established: March 29, 2016 (Department of Science & Technology letter no. 890 dated 29.03.2016)
