@@ -60,7 +60,7 @@ Preferred communication style: Simple, everyday language.
 - Session-based authentication state management
 
 **AI-Powered Chatbot:**
-- **SBTE Assistant**: Dialog-based chatbot available on both admin and student dashboards
+- **EduManage**: Dialog-based chatbot available on both admin and student dashboards
 - **Technology**: OpenAI GPT-4o integration via Replit AI Integrations (no API key required, billed to Replit credits)
 - **Knowledge Base**: Comprehensive SBTE Bihar information including:
   - Current exam schedules and registration deadlines (December 2025 exams)
@@ -68,7 +68,7 @@ Preferred communication style: Simple, everyday language.
   - Contact information and portal links
   - General polytechnic education guidance
 - **UI Design**: 
-  - **Launcher Button**: Fixed 56px circular button at bottom-4 right-4
+  - **Launcher Button**: Fixed 56px circular button at bottom-4 right-4 with z-index 9999 for maximum visibility
   - **Dialog Modal**: Centered Shadcn Dialog component (replaces floating overlay)
     - Width: 95vw on mobile, max-width 672px (2xl) on desktop
     - Height: 80vh with max-height 600px
@@ -76,9 +76,9 @@ Preferred communication style: Simple, everyday language.
     - Prevents content overlap - modal clearly takes focus in center of viewport
   - Real-time message streaming with timestamps
   - Loading indicators and error handling
-  - Accessible: ESC key closes, focus management, backdrop click dismissal
+  - Accessible: ESC key closes, focus management, backdrop click dismissal, screen reader support
 - **User Experience**: Click launcher → Dialog opens centered → Dashboard visible behind backdrop → Close with X/ESC/backdrop
-- **Personality**: Conversational and friendly, responds to casual greetings while providing accurate SBTE information
+- **Personality**: Conversational and friendly, responds to casual greetings while providing accurate education information
 
 ### Backend Architecture
 

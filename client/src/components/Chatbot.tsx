@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { MessageCircle, Send, Bot, User } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -18,7 +18,7 @@ export default function Chatbot() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "Hello! I'm your SBTE Bihar assistant. I can help you with:\n• Exam schedules and registration\n• Syllabus information\n• Course details\n• General information about polytechnic education\n\nHow can I help you today?",
+      content: "Hello! I'm EduManage, your education assistant. I can help you with:\n• Exam schedules and registration\n• Syllabus information\n• Course details\n• General information about polytechnic education\n\nHow can I help you today?",
       timestamp: new Date(),
     },
   ]);
@@ -80,7 +80,7 @@ export default function Chatbot() {
       {/* Floating Chat Button */}
       <Button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-4 right-4 h-14 w-14 rounded-full shadow-lg z-50 hover:shadow-xl transition-all"
+        className="fixed bottom-4 right-4 h-14 w-14 rounded-full shadow-lg z-[9999] hover:shadow-xl transition-all"
         size="icon"
         data-testid="button-open-chatbot"
       >
@@ -95,8 +95,11 @@ export default function Chatbot() {
               <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
                 <Bot className="h-6 w-6 text-primary" />
               </div>
-              <DialogTitle className="text-xl">SBTE Assistant</DialogTitle>
+              <DialogTitle className="text-xl">EduManage</DialogTitle>
             </div>
+            <DialogDescription className="sr-only">
+              AI-powered education assistant for exam schedules, syllabus, and course information
+            </DialogDescription>
           </DialogHeader>
 
           <div className="flex-1 flex flex-col overflow-hidden">
