@@ -12,4 +12,11 @@ if (!process.env.DATABASE_URL) {
 }
 
 export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+// Handle pool errors to prevent crashes when connections are terminated
+pool.on('error', (err) => {
+  console.error('Unexpected database pool error:', err);
+  // Don't crash the application - the pool will reconnect automatically
+});
+
 export const db = drizzle({ client: pool, schema });
