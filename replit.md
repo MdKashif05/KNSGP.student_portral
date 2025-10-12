@@ -100,6 +100,7 @@ Preferred communication style: Simple, everyday language.
 - **User Experience**: Click launcher → Dialog opens centered → Dashboard visible behind backdrop → Close with X/ESC/backdrop
 - **Personality**: Conversational and friendly like WhatsApp chats
   - Uses casual greetings: "Hii! 👋", "Hey there! 😊", "Perfect! ✨"
+  - Recognizes farewells: "Bye! 👋", "See you later! 😊", "Take care! ✨" (for "bye", "by", "goodbye")
   - Natural emoji usage throughout responses
   - Conversational phrases: "Great question!", "Sure thing!", "Happy to help! 👍"
   - Responds warmly to thanks and acknowledgments
