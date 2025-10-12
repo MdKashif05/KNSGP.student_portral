@@ -64,8 +64,16 @@ Preferred communication style: Simple, everyday language.
 - **Technology**: OpenAI GPT-4o integration via Replit AI Integrations (no API key required, billed to Replit credits)
 - **Dynamic Database Integration**: Fetches real-time subjects and instructor data from database on each request, ensuring chatbot always has current information
 - **Knowledge Base**: Comprehensive institutional and SBTE Bihar information including:
-  - **Complete SBTE Bihar CSE Syllabus**: Detailed semester-wise syllabus (Semester 1-6) with all subjects, topics, and evaluation patterns
-  - **Official References**: Links to SBTE Bihar website and official CSE syllabus PDF for additional resources
+  - **Complete SBTE Bihar Information**: All details from official SBTE website (sbte.bihar.gov.in)
+    - Complete CSE Syllabus: Semester-wise (1-6) with all subjects, topics, evaluation patterns
+    - All Engineering Branches: Civil, CSE, Electrical, Electronics, Mechanical, Fire Technology, IT, etc. with branch codes
+    - Admission Details: Eligibility (10th pass, 35%), entrance exams (DCECE, BPTPIA CET), fees (Govt: ₹4,800-₹10,610, Private: ₹1.31L-₹1.5L)
+    - Examination System: Academic calendar, evaluation patterns (70% external + 30% internal), passing criteria (40% minimum)
+    - Polytechnic Colleges: 80 colleges (46 Govt + 34 Private) with list of top colleges
+    - Placement Information: Top recruiters (Wipro, Infosys, TATA, Mahindra, etc.), recent placement drives
+    - All Portals: EMS, LMS (Moodle), Affiliation, Document Verification, DigiLocker, Alumni
+    - Leadership & Contact: Complete SBTE officials, addresses, phone numbers, emails
+    - Latest Updates: Exam schedules, registration deadlines, announcements
   - **KNSGP College Information**:
     - Full Name: Kameshwar Narayan Singh Government Polytechnic (KNSGP), Samastipur
     - Established: March 29, 2016 (Department of Science & Technology letter no. 890 dated 29.03.2016)
