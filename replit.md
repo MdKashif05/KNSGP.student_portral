@@ -64,6 +64,8 @@ Preferred communication style: Simple, everyday language.
 - **Technology**: OpenAI GPT-4o integration via Replit AI Integrations (no API key required, billed to Replit credits)
 - **Dynamic Database Integration**: Fetches real-time subjects and instructor data from database on each request, ensuring chatbot always has current information
 - **Knowledge Base**: Comprehensive institutional and SBTE Bihar information including:
+  - **Complete SBTE Bihar CSE Syllabus**: Detailed semester-wise syllabus (Semester 1-6) with all subjects, topics, and evaluation patterns extracted from official SBTE Bihar portal
+  - **Syllabus Downloads**: Direct links to official SBTE syllabus PDFs and previous year question papers
   - **KNSGP College Information**:
     - Principal: Prof. Aftab Anjum
     - HOD (CSE Department): Prof. Raghvendra Pratap

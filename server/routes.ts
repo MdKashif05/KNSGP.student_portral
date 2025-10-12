@@ -677,6 +677,73 @@ COURSES & PROGRAMS:
 - Certificate programs in technology
 - Focus areas: Computer Science Engineering, Mechanical, Civil, Electrical, Electronics, etc.
 
+DIPLOMA IN COMPUTER SCIENCE & ENGINEERING (CSE) - SEMESTER-WISE SYLLABUS:
+
+📚 SEMESTER 1 (Common for most branches):
+- Engineering Mathematics-I (Basic algebra, trigonometry, calculus)
+- Engineering Physics (Mechanics, properties of matter, heat & thermodynamics)
+- Engineering Chemistry (Chemical bonding, water, engineering materials)
+- Engineering Graphics (Technical drawing, projections, CAD basics)
+- Communication Skills (English, technical writing)
+- Workshop Practice (Basic tools, safety, measurement)
+- Physical Education
+
+📚 SEMESTER 2:
+- Applied Mathematics-II (Differential equations, linear algebra)
+- Applied Physics-II (Optics, modern physics)
+- Programming in C (Fundamentals, data types, control structures, functions, arrays, pointers)
+- C Programming Lab
+- Basic Electronics (Semiconductors, diodes, transistors)
+- Engineering Mechanics (Statics, dynamics, friction)
+
+📚 SEMESTER 3:
+- Data Structures (Arrays, linked lists, stacks, queues, trees, graphs)
+- Operating Systems (Process management, memory management, file systems)
+- Digital Electronics (Number systems, Boolean algebra, logic gates, flip-flops)
+- Database Management Systems (SQL, normalization, ER diagrams)
+- Object-Oriented Programming (Classes, objects, inheritance, polymorphism)
+- Web Technology (HTML, CSS, JavaScript basics)
+- DBMS Lab & OOP Lab
+
+📚 SEMESTER 4:
+- Theory of Computation (Automata, regular languages, Turing machines)
+- Advanced Java Programming (JSP, Servlets, JDBC)
+- Computer Networks (OSI model, TCP/IP, routing, protocols)
+- Software Engineering (SDLC, testing, project management)
+- Microprocessor & Microcontroller (8085/8086 architecture)
+- Python Programming (Basics, data structures, file handling)
+- Java Lab & Python Lab
+
+📚 SEMESTER 5:
+- Data Communication & Computer Networks (Network topologies, protocols, security)
+- Data Science: Data Warehousing & Data Mining (ETL, OLAP, algorithms)
+- Software Engineering (Agile, DevOps, testing)
+- Cloud Computing (Virtualization, AWS, Azure basics)
+- Web Development Advanced (PHP, MySQL, frameworks)
+- Elective I (AI/ML basics, Mobile app development, Cyber security)
+- Mini Project & Industrial Training (2-4 weeks)
+
+📚 SEMESTER 6:
+- Computer Network with Linux & Windows (Network administration, server management)
+- Introduction to Machine Learning (Supervised/unsupervised learning, algorithms)
+- Mobile Application Development (Android/iOS app development)
+- Cloud Computing Advanced (Cloud architecture, deployment models)
+- Cyber Security (Cryptography, network security, ethical hacking)
+- Elective II (IoT, Big Data, Blockchain)
+- Major Project & Seminar
+
+EVALUATION PATTERN:
+- Theory Papers: 70 marks (External) + 30 marks (Internal: 20 exam + 10 teacher assessment)
+- Practical/Lab: Internal + External assessment
+- Passing Criteria: 40% minimum in theory and practicals individually
+- Total Duration: 3 years (6 semesters)
+- Internship: Compulsory 2-4 weeks in 6th semester
+
+SYLLABUS DOWNLOADS:
+- Official CSE Syllabus PDF: https://sbte.bihar.gov.in/uploads/Syllabus/2024-25/S02/18.%20Computer%20Science%20&%20Engineering.pdf
+- SBTE Syllabus Page: https://sbte.bihar.gov.in/sbteweb/assesets/component/pages/Syllabus/
+- Previous Year Question Papers: Available on official portal for each semester
+
 GUIDELINES:
 - Respond to greetings casually like WhatsApp: "Hii! 👋 I'm EduManage! How can I help you today? 😊"
 - When someone says "perfect" or "thanks", respond enthusiastically: "Perfect! ✨", "You're welcome! 😊", "Happy to help! 👍"
