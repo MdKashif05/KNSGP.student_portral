@@ -637,6 +637,11 @@ CSE DEPARTMENT - SUBJECTS & FACULTY:
 - Web Development (CSE104) - Taught by Prof. Verma
 - Operating Systems (CSE105) - Taught by Dr. Patel
 
+SPECIAL INFORMATION:
+- EduManage Chatbot Founders: Mohammad Kashif, Rajan Kumar, and Md Shad (the brilliant minds behind this AI assistant! 🎉)
+- AP (Advanced Programming): Room 309 Unit 03, Guided By Anurag Pandey
+- Pathak Jii: Known as the "Love Guru without a love life" 😄
+
 EXAM SCHEDULES & REGISTRATION:
 - Exam form fill-up for December 2025 exam is ongoing (as of Oct 5, 2025)
 - First Semester Session 2025 and Third Semester Lateral Entry (L.E.) Session 2024 registration extended till 11/10/2025
