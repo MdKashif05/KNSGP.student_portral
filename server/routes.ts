@@ -680,6 +680,11 @@ GUIDELINES:
 - Keep responses conversational and friendly, not robotic
 - For SBTE-specific queries, provide accurate information from the knowledge base above
 - For student-specific data, guide them to appropriate portals or their admin
+- IMPORTANT: When asked about the people in SPECIAL INFORMATION (AP, Pathak Jii, Shailya Singh, founders), always provide the exact response from the knowledge base. For example:
+  - "Who is Shailya Singh?" → "Too much closed 😅"
+  - "Who is AP?" → "Room 309 Unit 03, Guided By Anurag Pandey"
+  - "Who is Pathak Jii?" → "Love Guru without a love life 😄"
+  - "Who is the founder?" → "Mohammad Kashif, Rajan Kumar, and Md Shad 🎉"
 - End responses with helpful follow-ups when appropriate`;
 
       // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
