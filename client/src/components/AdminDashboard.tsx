@@ -910,33 +910,48 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
       <AddAttendanceDialog
         open={showAddAttendanceDialog}
         onOpenChange={setShowAddAttendanceDialog}
-        onSuccess={refetchAttendance}
+        onSuccess={() => {
+          refetchAttendance();
+          refetchStudents();
+        }}
       />
 
       <EditAttendanceDialog
         open={showEditAttendanceDialog}
         onOpenChange={setShowEditAttendanceDialog}
         attendance={itemToEdit}
-        onSuccess={refetchAttendance}
+        onSuccess={() => {
+          refetchAttendance();
+          refetchStudents();
+        }}
       />
 
       <AddMarksDialog
         open={showAddMarksDialog}
         onOpenChange={setShowAddMarksDialog}
-        onSuccess={refetchMarks}
+        onSuccess={() => {
+          refetchMarks();
+          refetchStudents();
+        }}
       />
 
       <EditMarksDialog
         open={showEditMarksDialog}
         onOpenChange={setShowEditMarksDialog}
         marks={itemToEdit}
-        onSuccess={refetchMarks}
+        onSuccess={() => {
+          refetchMarks();
+          refetchStudents();
+        }}
       />
 
       <UploadMarksCSVDialog
         open={showUploadCSVDialog}
         onOpenChange={setShowUploadCSVDialog}
-        onSuccess={refetchMarks}
+        onSuccess={() => {
+          refetchMarks();
+          refetchStudents();
+        }}
       />
 
       <AddNoticeDialog
