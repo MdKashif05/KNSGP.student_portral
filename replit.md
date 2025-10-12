@@ -18,7 +18,15 @@ Preferred communication style: Simple, everyday language.
 - TailwindCSS for utility-first styling with custom design tokens
 - Shadcn/ui component library built on Radix UI primitives
 - TanStack Query (React Query) for server state management
-- Recharts for data visualization (attendance and marks charts)
+- Recharts for data visualization with interactive charts:
+  - **Admin Dashboard Charts:**
+    - AttendanceOverviewChart: Line chart showing monthly attendance trends (present vs absent)
+    - MarksDistributionChart: Bar chart displaying marks distribution across ranges
+    - SubjectPerformanceChart: Bar chart showing average performance by subject
+    - LibraryStatisticsChart: Pie chart with book availability overview
+  - **Student Dashboard Charts:**
+    - AttendanceChart: Personal attendance trends
+    - MarksChart: Individual performance visualization
 
 **Design System:**
 - **Modern Color Palette (October 2025):** Purple/violet theme (262 hue) for primary colors, replacing previous blue theme
