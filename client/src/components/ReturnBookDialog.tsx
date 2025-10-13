@@ -34,14 +34,9 @@ export default function ReturnBookDialog({ open, onOpenChange, issue, book, stud
 
     setIsLoading(true);
     try {
-      // Mark book as returned
+      // Mark book as returned (backend handles book availability update atomically)
       await apiRequest("PUT", `/api/library/issues/${issue.id}/return`, {
         returnDate,
-      });
-
-      // Update book copies
-      await apiRequest("PUT", `/api/library/books/${book.id}`, {
-        copiesAvailable: book.copiesAvailable + 1,
       });
 
       toast({

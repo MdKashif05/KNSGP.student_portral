@@ -538,7 +538,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/library/issues", requireAdmin, async (req, res) => {
     try {
       const validatedData = insertBookIssueSchema.parse(req.body);
+      
+      // Validate dates
+      if (new Date(validatedData.dueDate) < new Date(validatedData.issueDate)) {
+        return res.status(400).json({ message: "Due date must be after issue date" });
+      }
+      
+      // Check book availability
+      const book = await storage.getLibraryBookById(validatedData.bookId);
+      if (!book) {
+        return res.status(404).json({ message: "Book not found" });
+      }
+      if (book.copiesAvailable <= 0) {
+        return res.status(400).json({ message: "Book is not available" });
+      }
+      
+      // Atomic operation: Create issue and update book availability
       const bookIssue = await storage.createBookIssue(validatedData);
+      
+      try {
+        await storage.updateLibraryBook(book.id, {
+          copiesAvailable: book.copiesAvailable - 1
+        });
+      } catch (bookUpdateError: any) {
+        // Rollback: Delete the created issue if book update fails
+        await storage.deleteBookIssue(bookIssue.id);
+        throw new Error("Failed to update book availability: " + bookUpdateError.message);
+      }
+      
       res.status(201).json(bookIssue);
     } catch (error: any) {
       res.status(400).json({ message: "Error creating book issue", error: error.message });
@@ -549,10 +576,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const { returnDate } = req.body;
-      const bookIssue = await storage.returnBook(id, returnDate);
-      if (!bookIssue) {
+      
+      // Get the issue to find the book
+      const issue = await storage.getBookIssueById(id);
+      if (!issue) {
         return res.status(404).json({ message: "Book issue not found" });
       }
+      
+      if (issue.status === 'returned') {
+        return res.status(400).json({ message: "Book already returned" });
+      }
+      
+      // Get the book
+      const book = await storage.getLibraryBookById(issue.bookId);
+      if (!book) {
+        return res.status(404).json({ message: "Book not found" });
+      }
+      
+      // Atomic operation: Update issue status and increment book availability
+      const bookIssue = await storage.returnBook(id, returnDate);
+      
+      try {
+        await storage.updateLibraryBook(book.id, {
+          copiesAvailable: book.copiesAvailable + 1
+        });
+      } catch (bookUpdateError: any) {
+        // Rollback: Revert the return status if book update fails
+        await storage.updateBookIssue(id, { returnDate: null, status: 'issued' });
+        throw new Error("Failed to update book availability: " + bookUpdateError.message);
+      }
+      
       res.json(bookIssue);
     } catch (error: any) {
       res.status(400).json({ message: "Error returning book", error: error.message });

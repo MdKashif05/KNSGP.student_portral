@@ -231,6 +231,11 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(bookIssues);
   }
 
+  async getBookIssueById(id: number): Promise<BookIssue | undefined> {
+    const result = await db.select().from(bookIssues).where(eq(bookIssues.id, id));
+    return result[0];
+  }
+
   async createBookIssue(issue: InsertBookIssue): Promise<BookIssue> {
     const result = await db.insert(bookIssues).values(issue).returning();
     return result[0];
@@ -247,6 +252,11 @@ export class DatabaseStorage implements IStorage {
       .where(eq(bookIssues.id, id))
       .returning();
     return result[0];
+  }
+
+  async deleteBookIssue(id: number): Promise<boolean> {
+    const result = await db.delete(bookIssues).where(eq(bookIssues.id, id)).returning();
+    return result.length > 0;
   }
 
   // Notices

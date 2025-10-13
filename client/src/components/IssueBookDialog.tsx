@@ -47,18 +47,13 @@ export default function IssueBookDialog({ open, onOpenChange, book, students, on
 
     setIsLoading(true);
     try {
-      // Issue the book
+      // Issue the book (backend handles book availability update atomically)
       await apiRequest("POST", "/api/library/issues", {
         studentId: parseInt(selectedStudent),
         bookId: book.id,
         issueDate,
         dueDate,
         status: 'issued',
-      });
-
-      // Update book copies
-      await apiRequest("PUT", `/api/library/books/${book.id}`, {
-        copiesAvailable: book.copiesAvailable - 1,
       });
 
       toast({
