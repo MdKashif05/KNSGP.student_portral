@@ -259,6 +259,68 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
+  // Transactional book issue operation with row locking
+  async issueBookWithTransaction(issue: InsertBookIssue, bookId: number): Promise<BookIssue> {
+    return await db.transaction(async (tx) => {
+      // Lock the book row for update to prevent race conditions
+      const [book] = await tx.select().from(libraryBooks).where(eq(libraryBooks.id, bookId)).for('update');
+      
+      if (!book) {
+        throw new Error("Book not found");
+      }
+      
+      if (book.copiesAvailable <= 0) {
+        throw new Error("Book is not available");
+      }
+      
+      // Create the issue record
+      const [bookIssue] = await tx.insert(bookIssues).values(issue).returning();
+      
+      // Decrement book availability using locked row value
+      await tx.update(libraryBooks)
+        .set({ copiesAvailable: book.copiesAvailable - 1 })
+        .where(eq(libraryBooks.id, bookId));
+      
+      return bookIssue;
+    });
+  }
+
+  // Transactional book return operation with row locking
+  async returnBookWithTransaction(issueId: number, returnDate: string, bookId: number): Promise<BookIssue> {
+    return await db.transaction(async (tx) => {
+      // Lock both rows for update to prevent race conditions
+      const [book] = await tx.select().from(libraryBooks).where(eq(libraryBooks.id, bookId)).for('update');
+      
+      if (!book) {
+        throw new Error("Book not found");
+      }
+      
+      // Lock and validate issue status within transaction
+      const [issue] = await tx.select().from(bookIssues).where(eq(bookIssues.id, issueId)).for('update');
+      
+      if (!issue) {
+        throw new Error("Issue record not found");
+      }
+      
+      if (issue.status === 'returned') {
+        throw new Error("Book has already been returned");
+      }
+      
+      // Update the issue record
+      const [bookIssue] = await tx.update(bookIssues)
+        .set({ returnDate, status: 'returned' })
+        .where(eq(bookIssues.id, issueId))
+        .returning();
+      
+      // Increment book availability using locked row value
+      await tx.update(libraryBooks)
+        .set({ copiesAvailable: book.copiesAvailable + 1 })
+        .where(eq(libraryBooks.id, bookId));
+      
+      return bookIssue;
+    });
+  }
+
   // Notices
   async getAllNotices(): Promise<Notice[]> {
     return await db.select().from(notices).orderBy(desc(notices.createdAt));
