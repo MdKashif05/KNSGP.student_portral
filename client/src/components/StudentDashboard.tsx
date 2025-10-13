@@ -19,43 +19,34 @@ interface StudentDashboardProps {
 }
 
 export default function StudentDashboard({ studentName, rollNo, studentId, onLogout }: StudentDashboardProps) {
-  // Fetch student's attendance - include studentId in key for proper caching
+  // Fetch student's attendance - cached with studentId for instant loading
   const { data: attendanceData = [], isLoading: isLoadingAttendance } = useQuery<any[]>({
     queryKey: ['/api/attendance', studentId],
-    staleTime: 0,
-    refetchOnMount: true,
   });
 
-  // Fetch student's marks - include studentId in key for proper caching
+  // Fetch student's marks - cached with studentId for instant loading
   const { data: marksData = [], isLoading: isLoadingMarks } = useQuery<any[]>({
     queryKey: ['/api/marks', studentId],
-    staleTime: 0,
-    refetchOnMount: true,
   });
 
-  // Fetch subjects
+  // Fetch subjects - cached globally for instant loading
   const { data: subjects = [], isLoading: isLoadingSubjects } = useQuery<any[]>({
     queryKey: ['/api/subjects'],
-    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Fetch library books
+  // Fetch library books - cached globally for instant loading
   const { data: books = [] } = useQuery<any[]>({
     queryKey: ['/api/library/books'],
-    staleTime: 5 * 60 * 1000,
   });
 
-  // Fetch student's book issues - include studentId in key
+  // Fetch student's book issues - cached with studentId for instant loading
   const { data: bookIssues = [] } = useQuery<any[]>({
     queryKey: ['/api/library/issues', studentId],
-    staleTime: 0,
-    refetchOnMount: true,
   });
 
-  // Fetch notices
+  // Fetch notices - cached globally for instant loading
   const { data: notices = [] } = useQuery<any[]>({
     queryKey: ['/api/notices'],
-    staleTime: 2 * 60 * 1000, // 2 minutes
   });
 
   // Check if critical data is still loading

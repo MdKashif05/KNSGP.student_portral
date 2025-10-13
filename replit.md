@@ -59,6 +59,13 @@ Preferred communication style: Simple, everyday language.
 - Optimistic UI updates with React Query mutations
 - Session-based authentication state management
 
+**Performance Optimization:**
+- React Query configured with `staleTime: Infinity` globally for instant cached data loads
+- Student-specific data cached with studentId in query keys for proper isolation
+- No forced refetches on mount - data loads instantly from cache when available
+- Background refetches only when cache is invalidated by mutations
+- Zero loading delays for cached data, providing instant dashboard navigation
+
 **AI-Powered Chatbot:**
 - **EduManage**: Dialog-based chatbot available on both admin and student dashboards
 - **Technology**: OpenAI GPT-4o integration via Replit AI Integrations (no API key required, billed to Replit credits)
