@@ -335,6 +335,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/attendance/:studentId", requireAuth, async (req, res) => {
+    try {
+      const studentId = parseInt(req.params.studentId);
+      const attendanceRecords = await storage.getAttendanceByStudent(studentId);
+      res.json(attendanceRecords);
+    } catch (error: any) {
+      res.status(500).json({ message: "Error fetching attendance", error: error.message });
+    }
+  });
+
   app.post("/api/attendance", requireAdmin, async (req, res) => {
     try {
       const validatedData = insertAttendanceSchema.parse(req.body);
@@ -407,6 +417,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Admins can see all marks
         marksRecords = await storage.getAllMarks();
       }
+      res.json(marksRecords);
+    } catch (error: any) {
+      res.status(500).json({ message: "Error fetching marks", error: error.message });
+    }
+  });
+
+  app.get("/api/marks/:studentId", requireAuth, async (req, res) => {
+    try {
+      const studentId = parseInt(req.params.studentId);
+      const marksRecords = await storage.getMarksByStudent(studentId);
       res.json(marksRecords);
     } catch (error: any) {
       res.status(500).json({ message: "Error fetching marks", error: error.message });
@@ -529,6 +549,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         bookIssues = await storage.getAllBookIssues();
       }
+      res.json(bookIssues);
+    } catch (error: any) {
+      res.status(500).json({ message: "Error fetching book issues", error: error.message });
+    }
+  });
+
+  app.get("/api/library/issues/:studentId", requireAuth, async (req, res) => {
+    try {
+      const studentId = parseInt(req.params.studentId);
+      const bookIssues = await storage.getBookIssuesByStudent(studentId);
       res.json(bookIssues);
     } catch (error: any) {
       res.status(500).json({ message: "Error fetching book issues", error: error.message });
