@@ -52,8 +52,8 @@ export default function StudentDashboard({ studentName, rollNo, studentId, onLog
   // Check if critical data is still loading
   const isLoading = isLoadingAttendance || isLoadingMarks || isLoadingSubjects;
 
-  // Filter attendance data for this student
-  const studentAttendance = attendanceData.filter((a: any) => a.studentId === studentId);
+  // Backend already returns only this student's data via parameterized route
+  const studentAttendance = attendanceData;
 
   // Process attendance data for charts - monthly data
   const attendanceBySubject = subjects.map((subject: any) => {
@@ -72,8 +72,8 @@ export default function StudentDashboard({ studentName, rollNo, studentId, onLog
     ? (studentAttendance.reduce((sum: number, a: any) => sum + a.percentage, 0) / studentAttendance.length).toFixed(1)
     : '0.0';
 
-  // Filter marks data for this student
-  const studentMarks = marksData.filter((m: any) => m.studentId === studentId);
+  // Backend already returns only this student's data via parameterized route
+  const studentMarks = marksData;
 
   // Process marks data for charts - monthly data
   const marksChartData = Array.from(new Set(studentMarks.map((m: any) => m.month))).map((month: any) => {
