@@ -168,24 +168,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const students = await storage.getAllStudents();
       
-      // Get attendance and marks stats for each student
-      const studentsWithStats = await Promise.all(students.map(async (student) => {
-        const attendanceRecords = await storage.getAttendanceByStudent(student.id);
-        const marksRecords = await storage.getMarksByStudent(student.id);
-        const bookIssues = await storage.getBookIssuesByStudent(student.id);
+      // Fetch all data in parallel instead of per-student
+      const [allAttendance, allMarks, allBookIssues] = await Promise.all([
+        storage.getAllAttendance(),
+        storage.getAllMarks(),
+        storage.getAllBookIssues()
+      ]);
+      
+      // Create maps for quick lookup
+      const attendanceByStudent = new Map();
+      const marksByStudent = new Map();
+      const bookIssuesByStudent = new Map();
+      
+      allAttendance.forEach(record => {
+        if (!attendanceByStudent.has(record.studentId)) {
+          attendanceByStudent.set(record.studentId, []);
+        }
+        attendanceByStudent.get(record.studentId).push(record);
+      });
+      
+      allMarks.forEach(record => {
+        if (!marksByStudent.has(record.studentId)) {
+          marksByStudent.set(record.studentId, []);
+        }
+        marksByStudent.get(record.studentId).push(record);
+      });
+      
+      allBookIssues.forEach(record => {
+        if (!bookIssuesByStudent.has(record.studentId)) {
+          bookIssuesByStudent.set(record.studentId, []);
+        }
+        bookIssuesByStudent.get(record.studentId).push(record);
+      });
+      
+      // Calculate stats for each student
+      const studentsWithStats = students.map(student => {
+        const attendanceRecords = attendanceByStudent.get(student.id) || [];
+        const marksRecords = marksByStudent.get(student.id) || [];
+        const bookIssues = bookIssuesByStudent.get(student.id) || [];
         
         // Calculate average attendance percentage from monthly records
         const attendancePercentage = attendanceRecords.length > 0 
-          ? (attendanceRecords.reduce((sum, a) => sum + a.percentage, 0) / attendanceRecords.length).toFixed(1) 
+          ? (attendanceRecords.reduce((sum: number, a: any) => sum + a.percentage, 0) / attendanceRecords.length).toFixed(1) 
           : '0.0';
         
         // Calculate average marks percentage
         const avgMarksPercentage = marksRecords.length > 0 
-          ? (marksRecords.reduce((sum, m) => sum + m.percentage, 0) / marksRecords.length).toFixed(1) 
+          ? (marksRecords.reduce((sum: number, m: any) => sum + m.percentage, 0) / marksRecords.length).toFixed(1) 
           : '0.0';
         
         // Count issued books (not returned)
-        const booksIssued = bookIssues.filter(b => b.status === 'issued').length;
+        const booksIssued = bookIssues.filter((b: any) => b.status === 'issued').length;
         
         return {
           ...student,
@@ -193,7 +226,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           avgMarks: avgMarksPercentage,
           booksIssued
         };
-      }));
+      });
       
       res.json(studentsWithStats);
     } catch (error: any) {
