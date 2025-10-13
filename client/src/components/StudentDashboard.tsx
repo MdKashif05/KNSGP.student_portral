@@ -19,35 +19,47 @@ interface StudentDashboardProps {
 }
 
 export default function StudentDashboard({ studentName, rollNo, studentId, onLogout }: StudentDashboardProps) {
-  // Fetch student's attendance
-  const { data: attendanceData = [] } = useQuery<any[]>({
-    queryKey: ['/api/attendance'],
+  // Fetch student's attendance - include studentId in key for proper caching
+  const { data: attendanceData = [], isLoading: isLoadingAttendance } = useQuery<any[]>({
+    queryKey: ['/api/attendance', studentId],
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
-  // Fetch student's marks
-  const { data: marksData = [] } = useQuery<any[]>({
-    queryKey: ['/api/marks'],
+  // Fetch student's marks - include studentId in key for proper caching
+  const { data: marksData = [], isLoading: isLoadingMarks } = useQuery<any[]>({
+    queryKey: ['/api/marks', studentId],
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   // Fetch subjects
-  const { data: subjects = [] } = useQuery<any[]>({
+  const { data: subjects = [], isLoading: isLoadingSubjects } = useQuery<any[]>({
     queryKey: ['/api/subjects'],
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   // Fetch library books
   const { data: books = [] } = useQuery<any[]>({
     queryKey: ['/api/library/books'],
+    staleTime: 5 * 60 * 1000,
   });
 
-  // Fetch student's book issues
+  // Fetch student's book issues - include studentId in key
   const { data: bookIssues = [] } = useQuery<any[]>({
-    queryKey: ['/api/library/issues'],
+    queryKey: ['/api/library/issues', studentId],
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   // Fetch notices
   const { data: notices = [] } = useQuery<any[]>({
     queryKey: ['/api/notices'],
+    staleTime: 2 * 60 * 1000, // 2 minutes
   });
+
+  // Check if critical data is still loading
+  const isLoading = isLoadingAttendance || isLoadingMarks || isLoadingSubjects;
 
   // Filter attendance data for this student
   const studentAttendance = attendanceData.filter((a: any) => a.studentId === studentId);
@@ -204,33 +216,58 @@ export default function StudentDashboard({ studentName, rollNo, studentId, onLog
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <StatCard
-                title="Attendance"
-                value={`${attendancePercentage}%`}
-                icon={TrendingUp}
-              />
-              <StatCard
-                title="Average Marks"
-                value={avgMarks}
-                icon={Award}
-              />
-              <StatCard
-                title="Books Issued"
-                value={booksIssued.toString()}
-                icon={BookOpen}
-                description="Currently reading"
-              />
-            </div>
+            {isLoading ? (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[1, 2, 3].map((i) => (
+                    <Card key={i} className="animate-pulse">
+                      <CardContent className="pt-6">
+                        <div className="h-20 bg-muted rounded"></div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {[1, 2].map((i) => (
+                    <Card key={i} className="animate-pulse">
+                      <CardContent className="pt-6">
+                        <div className="h-64 bg-muted rounded"></div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <StatCard
+                    title="Attendance"
+                    value={`${attendancePercentage}%`}
+                    icon={TrendingUp}
+                  />
+                  <StatCard
+                    title="Average Marks"
+                    value={avgMarks}
+                    icon={Award}
+                  />
+                  <StatCard
+                    title="Books Issued"
+                    value={booksIssued.toString()}
+                    icon={BookOpen}
+                    description="Currently reading"
+                  />
+                </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {attendanceBySubject.length > 0 && (
-                <AttendanceChart data={attendanceBySubject} />
-              )}
-              {marksChartData.length > 0 && (
-                <MarksChart data={marksChartData} />
-              )}
-            </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {attendanceBySubject.length > 0 && (
+                    <AttendanceChart data={attendanceBySubject} />
+                  )}
+                  {marksChartData.length > 0 && (
+                    <MarksChart data={marksChartData} />
+                  )}
+                </div>
+              </>
+            )}
 
             <Card>
               <CardHeader>
@@ -266,80 +303,108 @@ export default function StudentDashboard({ studentName, rollNo, studentId, onLog
           </TabsContent>
 
           <TabsContent value="attendance" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {attendanceBySubject.length > 0 && (
-                <AttendanceChart data={attendanceBySubject} />
-              )}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Attendance Summary</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {attendanceBySubject.map((item: any, index: number) => {
-                      const percentage = item.percentage;
-                      const variant = percentage >= 80 ? 'default' : percentage >= 60 ? 'secondary' : 'destructive';
-                      return (
-                        <div key={index}>
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm font-medium">{item.subject}</span>
-                            <Badge variant={variant}>
-                              {percentage}%
-                            </Badge>
-                          </div>
-                          <div className="h-2 bg-muted rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-primary rounded-full"
-                              style={{ width: `${percentage}%` }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-            {attendanceTableData.length > 0 && (
-              <DataTable
-                title="Attendance Records"
-                description="Recent attendance history"
-                columns={attendanceColumns}
-                data={attendanceTableData}
-              />
+            {isLoading ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {[1, 2].map((i) => (
+                  <Card key={i} className="animate-pulse">
+                    <CardContent className="pt-6">
+                      <div className="h-64 bg-muted rounded"></div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {attendanceBySubject.length > 0 && (
+                    <AttendanceChart data={attendanceBySubject} />
+                  )}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Attendance Summary</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {attendanceBySubject.map((item: any, index: number) => {
+                          const percentage = item.percentage;
+                          const variant = percentage >= 80 ? 'default' : percentage >= 60 ? 'secondary' : 'destructive';
+                          return (
+                            <div key={index}>
+                              <div className="flex justify-between items-center mb-2">
+                                <span className="text-sm font-medium">{item.subject}</span>
+                                <Badge variant={variant}>
+                                  {percentage}%
+                                </Badge>
+                              </div>
+                              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-primary rounded-full"
+                                  style={{ width: `${percentage}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+                {attendanceTableData.length > 0 && (
+                  <DataTable
+                    title="Attendance Records"
+                    description="Recent attendance history"
+                    columns={attendanceColumns}
+                    data={attendanceTableData}
+                  />
+                )}
+              </>
             )}
           </TabsContent>
 
           <TabsContent value="marks" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {marksChartData.length > 0 && (
-                <MarksChart data={marksChartData} />
-              )}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Performance Summary</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Total Tests</span>
-                      <span className="text-lg font-semibold">{marksData.length}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Average Score</span>
-                      <span className="text-lg font-semibold">{avgMarks}%</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-            {marksTableData.length > 0 && (
-              <DataTable
-                title="Marks Details"
-                description="All test and exam results"
-                columns={marksColumns}
-                data={marksTableData}
-              />
+            {isLoading ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {[1, 2].map((i) => (
+                  <Card key={i} className="animate-pulse">
+                    <CardContent className="pt-6">
+                      <div className="h-64 bg-muted rounded"></div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {marksChartData.length > 0 && (
+                    <MarksChart data={marksChartData} />
+                  )}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Performance Summary</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm">Total Tests</span>
+                          <span className="text-lg font-semibold">{marksData.length}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm">Average Score</span>
+                          <span className="text-lg font-semibold">{avgMarks}%</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+                {marksTableData.length > 0 && (
+                  <DataTable
+                    title="Marks Details"
+                    description="All test and exam results"
+                    columns={marksColumns}
+                    data={marksTableData}
+                  />
+                )}
+              </>
             )}
           </TabsContent>
 
