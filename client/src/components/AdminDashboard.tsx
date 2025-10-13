@@ -25,7 +25,9 @@ import UploadMarksCSVDialog from "./UploadMarksCSVDialog";
 import AddNoticeDialog from "./AddNoticeDialog";
 import EditNoticeDialog from "./EditNoticeDialog";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
-import { Users, TrendingUp, BookOpen, Award, Plus, Upload, Pencil, Search } from "lucide-react";
+import IssueBookDialog from "./IssueBookDialog";
+import ReturnBookDialog from "./ReturnBookDialog";
+import { Users, TrendingUp, BookOpen, Award, Plus, Upload, Pencil, Search, BookMarked } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,8 +56,12 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
   const [showAddNoticeDialog, setShowAddNoticeDialog] = useState(false);
   const [showEditNoticeDialog, setShowEditNoticeDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showIssueBookDialog, setShowIssueBookDialog] = useState(false);
+  const [showReturnBookDialog, setShowReturnBookDialog] = useState(false);
   const [itemToEdit, setItemToEdit] = useState<any>(null);
   const [itemToDelete, setItemToDelete] = useState<any>(null);
+  const [bookToIssue, setBookToIssue] = useState<any>(null);
+  const [issueToReturn, setIssueToReturn] = useState<any>(null);
   const [deleteType, setDeleteType] = useState<'student' | 'subject' | 'book' | 'attendance' | 'marks' | 'notice' | null>(null);
   const [attendanceSearch, setAttendanceSearch] = useState("");
   const [marksSearch, setMarksSearch] = useState("");
@@ -100,6 +106,12 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
   const { data: notices = [], refetch: refetchNotices } = useQuery<any[]>({
     queryKey: ['/api/notices'],
     enabled: activeSection === 'notices',
+  });
+
+  // Fetch book issues
+  const { data: bookIssues = [], refetch: refetchBookIssues } = useQuery<any[]>({
+    queryKey: ['/api/library/issues'],
+    enabled: activeSection === 'library' || activeSection === 'reports' || activeSection === 'dashboard',
   });
 
   // Delete mutation
@@ -574,8 +586,10 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
         );
 
       case "library":
+        const issuedBooks = bookIssues.filter((issue: any) => issue.status === 'issued');
+        
         return (
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div className="flex justify-between items-center">
               <div>
                 <h2 className="text-2xl font-bold">Library Management</h2>
@@ -589,38 +603,87 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
                 Add Book
               </Button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {books.map((book: any) => (
-                <div key={book.id} className="relative">
-                  <LibraryBookCard
-                    title={book.title}
-                    author={book.author}
-                    copiesAvailable={book.copiesAvailable}
-                    totalCopies={book.totalCopies}
-                    onIssue={() => toast({ title: "Issue", description: "Issue book functionality coming soon" })}
-                  />
-                  <div className="absolute top-2 right-2 flex gap-1">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8"
-                      onClick={() => handleEdit('book', book)}
-                      data-testid={`button-edit-book-${book.id}`}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8"
-                      onClick={() => handleDelete('book', book)}
-                      data-testid={`button-delete-book-${book.id}`}
-                    >
-                      <span className="text-xs">×</span>
-                    </Button>
+
+            {/* Issued Books Section */}
+            {issuedBooks.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BookMarked className="h-5 w-5" />
+                    Issued Books ({issuedBooks.length})
+                  </CardTitle>
+                  <CardDescription>Books currently issued to students</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {issuedBooks.map((issue: any) => {
+                      const book = books.find((b: any) => b.id === issue.bookId);
+                      const student = students.find((s: any) => s.id === issue.studentId);
+                      return (
+                        <div key={issue.id} className="flex items-center justify-between p-3 border rounded-lg hover-elevate">
+                          <div className="flex-1">
+                            <p className="font-medium text-sm">{book?.title || "Unknown Book"}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Issued to: {student?.name || "Unknown"} ({student?.rollNo || "N/A"}) • Due: {issue.dueDate}
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setIssueToReturn({ ...issue, book, student });
+                              setShowReturnBookDialog(true);
+                            }}
+                            data-testid={`button-return-${issue.id}`}
+                          >
+                            Return
+                          </Button>
+                        </div>
+                      );
+                    })}
                   </div>
-                </div>
-              ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Available Books Section */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4">All Books</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {books.map((book: any) => (
+                  <div key={book.id} className="relative">
+                    <LibraryBookCard
+                      title={book.title}
+                      author={book.author}
+                      copiesAvailable={book.copiesAvailable}
+                      totalCopies={book.totalCopies}
+                      onIssue={() => {
+                        setBookToIssue(book);
+                        setShowIssueBookDialog(true);
+                      }}
+                    />
+                    <div className="absolute top-2 right-2 flex gap-1">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8"
+                        onClick={() => handleEdit('book', book)}
+                        data-testid={`button-edit-book-${book.id}`}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8"
+                        onClick={() => handleDelete('book', book)}
+                        data-testid={`button-delete-book-${book.id}`}
+                      >
+                        <span className="text-xs">×</span>
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         );
@@ -1019,6 +1082,31 @@ export default function AdminDashboard({ adminName, onLogout }: AdminDashboardPr
         onOpenChange={setShowEditNoticeDialog}
         notice={itemToEdit}
         onSuccess={refetchNotices}
+      />
+
+      <IssueBookDialog
+        open={showIssueBookDialog}
+        onOpenChange={setShowIssueBookDialog}
+        book={bookToIssue}
+        students={students}
+        onSuccess={() => {
+          refetchBooks();
+          refetchBookIssues();
+          refetchStudents();
+        }}
+      />
+
+      <ReturnBookDialog
+        open={showReturnBookDialog}
+        onOpenChange={setShowReturnBookDialog}
+        issue={issueToReturn}
+        book={issueToReturn?.book}
+        student={issueToReturn?.student}
+        onSuccess={() => {
+          refetchBooks();
+          refetchBookIssues();
+          refetchStudents();
+        }}
       />
 
       <DeleteConfirmDialog
