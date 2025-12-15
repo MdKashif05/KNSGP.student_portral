@@ -9,6 +9,8 @@ export const students = pgTable("students", {
   rollNo: varchar("roll_no", { length: 50 }).notNull().unique(),
   name: text("name").notNull(),
   password: text("password").notNull(),
+  failedLoginAttempts: integer("failed_login_attempts").default(0),
+  lockoutUntil: timestamp("lockout_until"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -24,17 +26,44 @@ export type Student = typeof students.$inferSelect;
 export const admins = pgTable("admins", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().unique(),
+  email: text("email").notNull().unique(),
   password: text("password").notNull(),
+  role: text("role").notNull().default('admin'), // 'admin' or 'super_admin'
+  status: text("status").notNull().default('active'), // 'active' or 'inactive'
+  lastLogin: timestamp("last_login"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const insertAdminSchema = createInsertSchema(admins).omit({
   id: true,
   createdAt: true,
+  lastLogin: true,
+}).extend({
+  email: z.string().email(),
+  role: z.enum(['admin', 'super_admin']).default('admin'),
+  status: z.enum(['active', 'inactive']).default('active'),
 });
 
 export type InsertAdmin = z.infer<typeof insertAdminSchema>;
 export type Admin = typeof admins.$inferSelect;
+
+// Audit Logs table
+export const auditLogs = pgTable("audit_logs", {
+  id: serial("id").primaryKey(),
+  adminId: integer("admin_id").references(() => admins.id),
+  action: text("action").notNull(),
+  details: text("details"),
+  ipAddress: text("ip_address"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+export type AuditLog = typeof auditLogs.$inferSelect;
 
 // Subjects table
 export const subjects = pgTable("subjects", {
@@ -72,6 +101,8 @@ export const insertAttendanceSchema = createInsertSchema(attendance).omit({
   createdAt: true,
   percentage: true, // Auto-calculated
   status: true, // Auto-calculated based on percentage
+}).extend({
+  month: z.string().regex(/^\d{4}-\d{2}$/, "Month must be in YYYY-MM format"),
 });
 
 export type InsertAttendance = z.infer<typeof insertAttendanceSchema>;
@@ -96,6 +127,8 @@ export const insertMarksSchema = createInsertSchema(marks).omit({
   createdAt: true,
   percentage: true, // Auto-calculated
   grade: true, // Auto-calculated based on percentage
+}).extend({
+  month: z.string().regex(/^\d{4}-\d{2}$/, "Month must be in YYYY-MM format"),
 });
 
 export type InsertMarks = z.infer<typeof insertMarksSchema>;

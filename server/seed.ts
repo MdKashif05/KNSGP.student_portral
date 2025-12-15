@@ -1,17 +1,16 @@
 import { db } from "./db";
 import { students, admins, subjects, attendance, marks, libraryBooks, bookIssues } from "@shared/schema";
 import { sql } from "drizzle-orm";
+import bcrypt from "bcryptjs";
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (() => {
-  throw new Error("ADMIN_PASSWORD environment variable is required for seeding");
-})();
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "mypassword123";
 
-const adminData = [
-  { name: "Md Kashif", password: ADMIN_PASSWORD },
-  { name: "Md Shad", password: ADMIN_PASSWORD },
-  { name: "Rajesh Ranjan", password: ADMIN_PASSWORD },
-  { name: "Deepak Kumar", password: ADMIN_PASSWORD },
-  { name: "Rajan Kumar", password: ADMIN_PASSWORD },
+const adminDataRaw = [
+  { name: "Md Kashif", email: "kashif@example.com", role: "super_admin" },
+  { name: "Md Shad", email: "shad@example.com", role: "admin" },
+  { name: "Rajesh Ranjan", email: "rajesh@example.com", role: "admin" },
+  { name: "Deepak Kumar", email: "deepak@example.com", role: "admin" },
+  { name: "Rajan Kumar", email: "rajan@example.com", role: "admin" },
 ];
 
 const studentData = [
@@ -91,14 +90,22 @@ async function seed() {
     console.log("✅ Cleared existing data");
 
     // Seed admins
+    const hashedPassword = await bcrypt.hash(ADMIN_PASSWORD, 10);
+    const adminData = adminDataRaw.map(a => ({
+      ...a,
+      password: hashedPassword,
+      status: 'active'
+    }));
+
     const createdAdmins = await db.insert(admins).values(adminData).returning();
     console.log(`✅ Created ${createdAdmins.length} admins`);
 
     // Seed students with name as password
-    const studentsWithPasswords = studentData.map(s => ({
+    const studentsWithPasswords = await Promise.all(studentData.map(async s => ({
       ...s,
-      password: s.name.toLowerCase() // Case-insensitive password
-    }));
+      password: await bcrypt.hash(s.name.toLowerCase(), 10) // Hash password
+    })));
+
     const createdStudents = await db.insert(students).values(studentsWithPasswords).returning();
     console.log(`✅ Created ${createdStudents.length} students`);
 
@@ -112,7 +119,7 @@ async function seed() {
 
     // Seed sample attendance (month-wise tracking)
     const attendanceRecords = [];
-    const months = ['2025-09', '2025-10'];
+    const months = ['2025-09', '2025-10', '2025-11', '2025-12'];
     
     for (const student of createdStudents) {
       for (const subject of createdSubjects) {
@@ -142,9 +149,10 @@ async function seed() {
     // Seed sample marks
     const marksRecords = [];
     const testsData = [
-      { month: '2025-09', name: 'Test 1' },
-      { month: '2025-09', name: 'Mid-term' },
-      { month: '2025-10', name: 'Test 2' },
+      { month: '2025-09', name: 'Unit Test 1' },
+      { month: '2025-10', name: 'Mid-term' },
+      { month: '2025-11', name: 'Unit Test 2' },
+      { month: '2025-12', name: 'Pre-Final' },
     ];
     
     for (const student of createdStudents) {
@@ -153,12 +161,15 @@ async function seed() {
           const marksObtained = Math.floor(Math.random() * 30) + 60; // 60-90
           const totalMarks = 100;
           const percentage = (marksObtained / totalMarks) * 100;
-          const grade = percentage >= 90 ? 'A+' : 
-                       percentage >= 80 ? 'A' : 
-                       percentage >= 70 ? 'B+' : 
-                       percentage >= 60 ? 'B' : 
-                       percentage >= 50 ? 'C' : 
-                       percentage >= 40 ? 'D' : 'F';
+          
+          // Match logic in routes.ts
+          let grade = 'F';
+          if (percentage >= 90) grade = 'A+';
+          else if (percentage >= 85) grade = 'A';
+          else if (percentage >= 80) grade = 'B+';
+          else if (percentage >= 75) grade = 'B';
+          else if (percentage >= 60) grade = 'C';
+          else if (percentage >= 50) grade = 'D';
           
           marksRecords.push({
             studentId: student.id,

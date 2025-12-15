@@ -3,10 +3,10 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
-import LoginPage from "@/components/LoginPage";
-import AdminDashboard from "@/components/AdminDashboard";
-import StudentDashboard from "@/components/StudentDashboard";
-import Chatbot from "@/components/Chatbot";
+import LoginPage from "@/pages/LoginPage";
+import AdminDashboard from "@/pages/AdminDashboard";
+import StudentDashboard from "@/pages/StudentDashboard";
+import Chatbot from "@/components/layout/Chatbot";
 
 function App() {
   const [user, setUser] = useState<{ 
@@ -14,10 +14,12 @@ function App() {
     id: number | null;
     name: string | null;
     rollNo?: string | null;
+    adminRole?: 'admin' | 'super_admin' | null;
   }>({
     role: null,
     id: null,
     name: null,
+    adminRole: null
   });
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
@@ -36,6 +38,7 @@ function App() {
             id: data.id,
             name: data.name,
             rollNo: data.rollNo || null,
+            adminRole: data.adminRole || null,
           });
         }
       } catch (error) {
@@ -53,7 +56,8 @@ function App() {
       role, 
       id: userData.id,
       name: userData.name,
-      rollNo: userData.rollNo 
+      rollNo: userData.rollNo,
+      adminRole: userData.adminRole || null,
     });
   };
 
@@ -63,7 +67,7 @@ function App() {
     } catch (error) {
       console.error('Logout error:', error);
     }
-    setUser({ role: null, id: null, name: null });
+    setUser({ role: null, id: null, name: null, adminRole: null });
   };
 
   if (isCheckingAuth) {
@@ -83,7 +87,7 @@ function App() {
         {!user.role ? (
           <LoginPage onLogin={handleLogin} />
         ) : user.role === 'admin' ? (
-          <AdminDashboard adminName={user.name!} onLogout={handleLogout} />
+          <AdminDashboard adminName={user.name!} adminRole={user.adminRole} onLogout={handleLogout} />
         ) : (
           <StudentDashboard 
             studentName={user.name!} 

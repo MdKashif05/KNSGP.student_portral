@@ -2,17 +2,18 @@ import { db } from "./db";
 import { students, admins, subjects, attendance, marks, libraryBooks, bookIssues } from "@shared/schema";
 import { sql } from "drizzle-orm";
 import { count } from "drizzle-orm";
+import bcrypt from "bcryptjs";
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (() => {
   throw new Error("ADMIN_PASSWORD environment variable is required for seeding");
 })();
 
 const adminData = [
-  { name: "Md Kashif", password: ADMIN_PASSWORD },
-  { name: "Md Shad", password: ADMIN_PASSWORD },
-  { name: "Rajesh Ranjan", password: ADMIN_PASSWORD },
-  { name: "Deepak Kumar", password: ADMIN_PASSWORD },
-  { name: "Rajan Kumar", password: ADMIN_PASSWORD },
+  { name: "Md Kashif", email: "mdkashif@example.com", password: ADMIN_PASSWORD },
+  { name: "Md Shad", email: "mdshad@example.com", password: ADMIN_PASSWORD },
+  { name: "Rajesh Ranjan", email: "rajesh@example.com", password: ADMIN_PASSWORD },
+  { name: "Deepak Kumar", email: "deepak@example.com", password: ADMIN_PASSWORD },
+  { name: "Rajan Kumar", email: "rajan@example.com", password: ADMIN_PASSWORD },
 ];
 
 const studentData = [
@@ -94,10 +95,10 @@ async function seedProduction() {
     console.log(`✅ Created ${createdAdmins.length} admins`);
 
     // Seed students with name as password
-    const studentsWithPasswords = studentData.map(s => ({
+    const studentsWithPasswords = await Promise.all(studentData.map(async s => ({
       ...s,
-      password: s.name.toLowerCase()
-    }));
+      password: await bcrypt.hash(s.name.toLowerCase(), 10)
+    })));
     const createdStudents = await db.insert(students).values(studentsWithPasswords).returning();
     console.log(`✅ Created ${createdStudents.length} students`);
 

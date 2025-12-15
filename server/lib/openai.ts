@@ -8,9 +8,14 @@ Follow these instructions when using this blueprint:
 */
 
 // This is using Replit's AI Integrations service, which provides OpenAI-compatible API access without requiring your own OpenAI API key.
+// Also supports standard OPENAI_API_KEY for local development.
+const apiKey = process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+
 const openai = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
+  apiKey: apiKey || "dummy-key", // Prevent crash on init if key is missing
 });
+
+export const isOpenAIConfigured = !!apiKey;
 
 export default openai;

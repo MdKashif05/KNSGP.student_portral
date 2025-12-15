@@ -8,6 +8,7 @@ import {
   libraryBooks, 
   bookIssues,
   notices,
+  auditLogs,
   type Student,
   type Admin,
   type Subject,
@@ -16,6 +17,7 @@ import {
   type LibraryBook,
   type BookIssue,
   type Notice,
+  type AuditLog,
   type InsertStudent,
   type InsertAdmin,
   type InsertSubject,
@@ -23,9 +25,10 @@ import {
   type InsertMarks,
   type InsertLibraryBook,
   type InsertBookIssue,
-  type InsertNotice
+  type InsertNotice,
+  type InsertAuditLog
 } from "@shared/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, asc } from "drizzle-orm";
 
 export interface IStorage {
   // Students
@@ -37,8 +40,15 @@ export interface IStorage {
 
   // Admins
   getAdminByName(name: string): Promise<Admin | undefined>;
+  getAdminById(id: number): Promise<Admin | undefined>;
+  getAdminByEmail(email: string): Promise<Admin | undefined>;
   getAllAdmins(): Promise<Admin[]>;
   createAdmin(admin: InsertAdmin): Promise<Admin>;
+  updateAdmin(id: number, admin: Partial<Admin>): Promise<Admin | undefined>;
+  deleteAdmin(id: number): Promise<boolean>;
+
+  // Audit Logs
+  createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
 
   // Subjects
   getAllSubjects(): Promise<Subject[]>;
@@ -51,6 +61,7 @@ export interface IStorage {
   getAttendanceByStudent(studentId: number): Promise<Attendance[]>;
   getAllAttendance(): Promise<Attendance[]>;
   createAttendance(attendanceRecord: InsertAttendance): Promise<Attendance>;
+  createAttendanceBatch(attendanceRecords: (InsertAttendance & { percentage: number; status: string })[]): Promise<Attendance[]>;
   updateAttendance(id: number, attendanceRecord: Partial<InsertAttendance>): Promise<Attendance | undefined>;
   deleteAttendance(id: number): Promise<boolean>;
 
@@ -58,6 +69,7 @@ export interface IStorage {
   getMarksByStudent(studentId: number): Promise<Marks[]>;
   getAllMarks(): Promise<Marks[]>;
   createMarks(marksRecord: InsertMarks): Promise<Marks>;
+  createMarksBatch(marksRecords: (InsertMarks & { percentage: number; grade: string })[]): Promise<Marks[]>;
   updateMarks(id: number, marksRecord: Partial<InsertMarks>): Promise<Marks | undefined>;
   deleteMarks(id: number): Promise<boolean>;
 
@@ -91,7 +103,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllStudents(): Promise<Student[]> {
-    return await db.select().from(students);
+    return await db.select().from(students).orderBy(asc(students.id));
   }
 
   async createStudent(student: InsertStudent): Promise<Student> {
@@ -115,8 +127,18 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
+  async getAdminById(id: number): Promise<Admin | undefined> {
+    const result = await db.select().from(admins).where(eq(admins.id, id));
+    return result[0];
+  }
+
+  async getAdminByEmail(email: string): Promise<Admin | undefined> {
+    const result = await db.select().from(admins).where(eq(admins.email, email));
+    return result[0];
+  }
+
   async getAllAdmins(): Promise<Admin[]> {
-    return await db.select().from(admins);
+    return await db.select().from(admins).orderBy(asc(admins.id));
   }
 
   async createAdmin(admin: InsertAdmin): Promise<Admin> {
@@ -124,9 +146,25 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
+  async updateAdmin(id: number, admin: Partial<Admin>): Promise<Admin | undefined> {
+    const result = await db.update(admins).set(admin).where(eq(admins.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteAdmin(id: number): Promise<boolean> {
+    const result = await db.delete(admins).where(eq(admins.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Audit Logs
+  async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
+    const result = await db.insert(auditLogs).values(log).returning();
+    return result[0];
+  }
+
   // Subjects
   async getAllSubjects(): Promise<Subject[]> {
-    return await db.select().from(subjects);
+    return await db.select().from(subjects).orderBy(asc(subjects.id));
   }
 
   async getSubjectById(id: number): Promise<Subject | undefined> {
@@ -155,12 +193,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllAttendance(): Promise<Attendance[]> {
-    return await db.select().from(attendance).orderBy(desc(attendance.month));
+    return await db.select().from(attendance).orderBy(desc(attendance.month), asc(attendance.studentId), asc(attendance.id));
   }
 
   async createAttendance(attendanceRecord: any): Promise<Attendance> {
     const result = await db.insert(attendance).values(attendanceRecord).returning();
     return result[0];
+  }
+
+  async createAttendanceBatch(attendanceRecords: (InsertAttendance & { percentage: number; status: string })[]): Promise<Attendance[]> {
+    return await db.transaction(async (tx) => {
+      const results: Attendance[] = [];
+      for (const record of attendanceRecords) {
+        const [result] = await tx.insert(attendance).values(record).returning();
+        results.push(result);
+      }
+      return results;
+    });
   }
 
   async updateAttendance(id: number, attendanceRecord: Partial<InsertAttendance>): Promise<Attendance | undefined> {
@@ -179,12 +228,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllMarks(): Promise<Marks[]> {
-    return await db.select().from(marks);
+    return await db.select().from(marks).orderBy(asc(marks.studentId), asc(marks.subjectId), asc(marks.id));
   }
 
   async createMarks(marksRecord: any): Promise<Marks> {
     const result = await db.insert(marks).values(marksRecord).returning();
     return result[0];
+  }
+
+  async createMarksBatch(marksRecords: (InsertMarks & { percentage: number; grade: string })[]): Promise<Marks[]> {
+    return await db.transaction(async (tx) => {
+      const results: Marks[] = [];
+      for (const record of marksRecords) {
+        const [result] = await tx.insert(marks).values(record).returning();
+        results.push(result);
+      }
+      return results;
+    });
   }
 
   async updateMarks(id: number, marksRecord: Partial<InsertMarks>): Promise<Marks | undefined> {
@@ -199,7 +259,7 @@ export class DatabaseStorage implements IStorage {
 
   // Library Books
   async getAllLibraryBooks(): Promise<LibraryBook[]> {
-    return await db.select().from(libraryBooks);
+    return await db.select().from(libraryBooks).orderBy(asc(libraryBooks.id));
   }
 
   async getLibraryBookById(id: number): Promise<LibraryBook | undefined> {
@@ -228,7 +288,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllBookIssues(): Promise<BookIssue[]> {
-    return await db.select().from(bookIssues);
+    return await db.select().from(bookIssues).orderBy(desc(bookIssues.issueDate), desc(bookIssues.id));
   }
 
   async getBookIssueById(id: number): Promise<BookIssue | undefined> {

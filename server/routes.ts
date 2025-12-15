@@ -1,7 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { requireAuth, requireAdmin, requireStudent } from "./auth";
+import { requireAuth, requireAdmin, requireSuperAdmin, requireStudent } from "./auth";
+import bcrypt from "bcryptjs";
 import { 
   insertStudentSchema,
   insertAdminSchema,
@@ -49,6 +50,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const trimmedUsername = username.trim();
       const trimmedPassword = password.trim();
 
+      // Check for maintenance mode
+      if (process.env.MAINTENANCE_MODE === 'true') {
+        return res.status(503).json({
+          message: "System is currently under maintenance. Please try again later."
+        });
+      }
+
       if (role === 'admin') {
         // Admin login
         const admin = await storage.getAdminByName(trimmedUsername);
@@ -59,27 +67,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        if (admin.password !== trimmedPassword) {
+        const isValid = await bcrypt.compare(trimmedPassword, admin.password);
+        if (!isValid) {
           return res.status(401).json({ 
             message: "Invalid password" 
           });
         }
+        
+        if (admin.status !== 'active') {
+          return res.status(403).json({
+            message: "Account is inactive"
+          });
+        }
+        
+        // Update last login
+        await storage.updateAdmin(admin.id, { lastLogin: new Date() });
 
         req.session.userId = admin.id;
         req.session.userRole = 'admin';
+        req.session.adminRole = admin.role as 'admin' | 'super_admin';
         req.session.username = admin.name;
+
+        // Log login action
+        await storage.createAuditLog({
+          adminId: admin.id,
+          action: "LOGIN",
+          details: "Admin logged in",
+          ipAddress: req.ip
+        });
 
         return res.json({ 
           success: true,
           user: {
             id: admin.id,
             name: admin.name,
-            role: 'admin'
+            role: 'admin',
+            adminRole: admin.role
           }
         });
 
       } else if (role === 'student') {
-        // Student login (case-insensitive password)
+        // Student login
+        // Check for invalid roll number format
+        if (!/^[A-Z0-9-]+$/i.test(trimmedUsername)) {
+          return res.status(400).json({ 
+            message: "Invalid student ID format" 
+          });
+        }
+
         const student = await storage.getStudentByRollNo(trimmedUsername);
         
         if (!student) {
@@ -88,10 +123,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        // Case-insensitive password check (trim both sides)
-        if (student.password.toLowerCase().trim() !== trimmedPassword.toLowerCase()) {
-          return res.status(401).json({ 
-            message: "Invalid password" 
+        // Check for account lockout
+        if (student.lockoutUntil && new Date(student.lockoutUntil) > new Date()) {
+          const remainingTime = Math.ceil((new Date(student.lockoutUntil).getTime() - Date.now()) / 60000);
+          return res.status(403).json({
+            message: `Account locked. Please try again in ${remainingTime} minutes.`
+          });
+        }
+
+        // Verify password (student name as password)
+        const isValid = trimmedPassword === student.name;
+
+        if (!isValid) {
+          const attempts = (student.failedLoginAttempts ?? 0) + 1;
+          let updateData: any = { failedLoginAttempts: attempts };
+          let message = "Invalid password";
+
+          if (attempts >= 3) {
+            const lockoutTime = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+            updateData.lockoutUntil = lockoutTime;
+            message = "Account locked due to multiple failed attempts. Please try again in 15 minutes.";
+            await storage.updateStudent(student.id, updateData);
+            return res.status(403).json({ message });
+          } else {
+            await storage.updateStudent(student.id, updateData);
+            return res.status(401).json({ 
+              message: `${message}. ${3 - attempts} attempts remaining.` 
+            });
+          }
+        }
+
+        // Successful login - reset failed attempts
+        if ((student.failedLoginAttempts ?? 0) > 0 || student.lockoutUntil) {
+          await storage.updateStudent(student.id, { 
+            failedLoginAttempts: 0, 
+            lockoutUntil: null 
           });
         }
 
@@ -143,7 +209,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({
           id: admin.id,
           name: admin.name,
-          role: 'admin'
+          role: 'admin',
+          adminRole: admin.role
         });
       } else {
         const student = await storage.getStudentByRollNo(req.session.username!);
@@ -159,6 +226,142 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error: any) {
       return res.status(500).json({ message: "Error fetching user", error: error.message });
+    }
+  });
+
+  // ========== ADMIN MANAGEMENT ROUTES ==========
+
+  // Get all admins
+  app.get("/api/admins", requireSuperAdmin, async (req, res) => {
+    try {
+      const admins = await storage.getAllAdmins();
+      // Remove passwords from response
+      const safeAdmins = admins.map(a => {
+        const { password, ...rest } = a;
+        return rest;
+      });
+      res.json(safeAdmins);
+    } catch (error: any) {
+      res.status(500).json({ message: "Error fetching admins", error: error.message });
+    }
+  });
+
+  // Create admin
+  app.post("/api/admins", requireSuperAdmin, async (req, res) => {
+    try {
+      const validatedData = insertAdminSchema.parse(req.body);
+      
+      // Hash password
+      const hashedPassword = await bcrypt.hash(validatedData.password, 10);
+      
+      const admin = await storage.createAdmin({
+        ...validatedData,
+        password: hashedPassword
+      });
+      
+      // Log action
+      await storage.createAuditLog({
+        adminId: req.session.userId,
+        action: "CREATE_ADMIN",
+        details: `Created admin ${admin.name}`,
+        ipAddress: req.ip
+      });
+      
+      const { password, ...safeAdmin } = admin;
+      res.status(201).json(safeAdmin);
+    } catch (error: any) {
+      res.status(400).json({ message: "Error creating admin", error: error.message });
+    }
+  });
+
+  // Update admin
+  app.put("/api/admins/:id", requireSuperAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updates = req.body;
+      
+      // Prevent updating password via this route
+      if (updates.password) {
+        delete updates.password;
+      }
+      
+      const admin = await storage.updateAdmin(id, updates);
+      if (!admin) {
+        return res.status(404).json({ message: "Admin not found" });
+      }
+      
+      // Log action
+      await storage.createAuditLog({
+        adminId: req.session.userId,
+        action: "UPDATE_ADMIN",
+        details: `Updated admin ${admin.name}`,
+        ipAddress: req.ip
+      });
+      
+      const { password, ...safeAdmin } = admin;
+      res.json(safeAdmin);
+    } catch (error: any) {
+      res.status(400).json({ message: "Error updating admin", error: error.message });
+    }
+  });
+
+  // Reset password
+  app.post("/api/admins/:id/reset-password", requireSuperAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { newPassword } = req.body;
+      
+      if (!newPassword || newPassword.length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters" });
+      }
+      
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      const admin = await storage.updateAdmin(id, { password: hashedPassword });
+      
+      if (!admin) {
+        return res.status(404).json({ message: "Admin not found" });
+      }
+      
+      // Log action
+      await storage.createAuditLog({
+        adminId: req.session.userId,
+        action: "RESET_PASSWORD",
+        details: `Reset password for admin ${admin.name}`,
+        ipAddress: req.ip
+      });
+      
+      res.json({ message: "Password reset successfully" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Error resetting password", error: error.message });
+    }
+  });
+
+  // Delete/Deactivate admin
+  app.delete("/api/admins/:id", requireSuperAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      // Prevent deleting self
+      if (id === req.session.userId) {
+        return res.status(400).json({ message: "Cannot delete yourself" });
+      }
+      
+      const deleted = await storage.deleteAdmin(id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Admin not found" });
+      }
+      
+      // Log action
+      await storage.createAuditLog({
+        adminId: req.session.userId,
+        action: "DELETE_ADMIN",
+        details: `Deleted admin ID ${id}`,
+        ipAddress: req.ip
+      });
+      
+      res.json({ success: true, message: "Admin deleted successfully" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Error deleting admin", error: error.message });
     }
   });
 
@@ -237,7 +440,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/students", requireAdmin, async (req, res) => {
     try {
       const validatedData = insertStudentSchema.parse(req.body);
-      const student = await storage.createStudent(validatedData);
+      
+      // Hash password before creating
+      const hashedPassword = await bcrypt.hash(validatedData.password, 10);
+      const studentData = { ...validatedData, password: hashedPassword };
+      
+      const student = await storage.createStudent(studentData);
       res.status(201).json(student);
     } catch (error: any) {
       res.status(400).json({ message: "Error creating student", error: error.message });
@@ -247,7 +455,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/students/:id", requireAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const student = await storage.updateStudent(id, req.body);
+      
+      let updateData = req.body;
+      
+      // If password is being updated, hash it
+      if (updateData.password) {
+        const hashedPassword = await bcrypt.hash(updateData.password, 10);
+        updateData = { ...updateData, password: hashedPassword };
+      }
+      
+      const student = await storage.updateStudent(id, updateData);
       if (!student) {
         return res.status(404).json({ message: "Student not found" });
       }
@@ -345,6 +562,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/attendance/batch", requireAdmin, async (req, res) => {
+    try {
+      const records = req.body.records;
+      if (!Array.isArray(records)) {
+        return res.status(400).json({ message: "Records must be an array" });
+      }
+
+      const processedRecords = records.map(record => {
+        const validatedData = insertAttendanceSchema.parse(record);
+        const percentage = (validatedData.presentDays / validatedData.totalDays) * 100;
+        const status = calculateAttendanceStatus(percentage);
+        return {
+          ...validatedData,
+          percentage,
+          status
+        };
+      });
+
+      const results = await storage.createAttendanceBatch(processedRecords);
+
+      // Log action
+      await storage.createAuditLog({
+        adminId: req.session.userId,
+        action: "BATCH_CREATE_ATTENDANCE",
+        details: `Created ${results.length} attendance records`,
+        ipAddress: req.ip
+      });
+
+      res.status(201).json(results);
+    } catch (error: any) {
+      res.status(400).json({ message: "Error creating attendance batch", error: error.message });
+    }
+  });
+
   app.post("/api/attendance", requireAdmin, async (req, res) => {
     try {
       const validatedData = insertAttendanceSchema.parse(req.body);
@@ -430,6 +681,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(marksRecords);
     } catch (error: any) {
       res.status(500).json({ message: "Error fetching marks", error: error.message });
+    }
+  });
+
+  app.post("/api/marks/batch", requireAdmin, async (req, res) => {
+    try {
+      const records = req.body.records;
+      if (!Array.isArray(records)) {
+        return res.status(400).json({ message: "Records must be an array" });
+      }
+
+      const processedRecords = records.map(record => {
+        const validatedData = insertMarksSchema.parse(record);
+        const percentage = (validatedData.marksObtained / validatedData.totalMarks) * 100;
+        const grade = calculateGrade(percentage);
+        return {
+          ...validatedData,
+          percentage,
+          grade
+        };
+      });
+
+      const results = await storage.createMarksBatch(processedRecords);
+
+      // Log action
+      await storage.createAuditLog({
+        adminId: req.session.userId,
+        action: "BATCH_CREATE_MARKS",
+        details: `Created ${results.length} marks records`,
+        ipAddress: req.ip
+      });
+
+      res.status(201).json(results);
+    } catch (error: any) {
+      res.status(400).json({ message: "Error creating marks batch", error: error.message });
     }
   });
 
@@ -675,7 +960,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Import OpenAI client
-      const openai = (await import("./lib/openai")).default;
+      const { default: openai, isOpenAIConfigured } = await import("./lib/openai");
+
+      // Simple fallback response generator
+      const getSimpleResponse = (msg: string) => {
+        const m = msg.toLowerCase();
+        
+        // Easter eggs
+        if (m.includes("shailya")) return "Too much closed 😅";
+        if (m.includes("ap") || m.includes("anurag")) return "Room 309 Unit 03, Guided By Anurag Pandey";
+        if (m.includes("pathak")) return "Love Guru without a love life 😄";
+        if (m.includes("founder") || m.includes("create")) return "Mohammed Kashif, Rajan Kumar, and Md Shad 🎉";
+        
+        // General queries
+        if (m.includes("syllabus")) return "For CSE, we cover:\n- Sem 1-2: Basics (Math, Physics, C)\n- Sem 3: Data Structures, OS, DBMS\n- Sem 4: Java, Networks, Python\n- Sem 5: Data Science, Cloud, Web Dev\n- Sem 6: ML, Cyber Security, Project. (Check SBTE website for full PDF)";
+        if (m.includes("admission")) return "Eligibility: 10th pass (35%). Admission via DCECE (BCECEB) entrance exam.";
+        if (m.includes("fee")) return "Govt Colleges: ₹4,800 – ₹10,610 per year. Private: ₹1.3L – ₹1.5L per year.";
+        if (m.includes("attendance")) return "You can check your attendance in the Dashboard or Attendance tab.";
+        if (m.includes("mark") || m.includes("result")) return "Check the Marks tab for your latest results.";
+        if (m.includes("library") || m.includes("book")) return "Visit the Library section to see available books.";
+        if (m.includes("subject")) return "We cover C, Data Structures, DBMS, OS, Web Dev, and more.";
+        if (m.includes("exam")) return "Exams are held semester-wise (Odd: July-Dec, Even: Jan-June). Check SBTE website for schedules.";
+        if (m.includes("sbte") || m.includes("update")) return "Please check https://sbte.bihar.gov.in/ for latest updates.";
+        
+        // Greetings
+        if (m.match(/\b(hi|hello|hey|hii)\b/)) return "Hii! 👋 I'm EduManage! How can I help you today? 😊";
+        if (m.match(/\b(bye|goodbye|see you)\b/)) return "Bye! 👋 See you later! 😊";
+        
+        return "I'm EduManage! I can help with syllabus, admission, attendance, marks, and library info. (Note: Set OPENAI_API_KEY for full AI capabilities)";
+      };
+
+      // If OpenAI is not configured, use fallback immediately
+      if (!isOpenAIConfigured) {
+        return res.json({ response: getSimpleResponse(message) });
+      }
 
       // Fetch real-time subjects from database
       const subjects = await storage.getAllSubjects();
@@ -1018,9 +1336,16 @@ GUIDELINES:
       res.json({ response });
     } catch (error: any) {
       console.error("Chatbot error:", error);
-      res.status(500).json({ 
-        message: "Error processing chat message", 
-        error: error.message 
+      
+      // Fallback in case of API error (even if configured, it might fail)
+      const getSimpleResponse = (msg: string) => {
+        const m = msg.toLowerCase();
+        if (m.match(/\b(hi|hello|hey|hii)\b/)) return "Hii! 👋 I'm EduManage! How can I help you today? 😊";
+        return "I'm EduManage! I can help with syllabus, admission, attendance, marks, and library info. (OpenAI API seems to be down, running in safe mode)";
+      };
+      
+      res.json({ 
+        response: getSimpleResponse(req.body.message || "")
       });
     }
   });
