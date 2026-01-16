@@ -76,6 +76,39 @@ async function fetchSyllabus() {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // ========== SETUP ROUTE (For First-Time Deployment) ==========
+  app.get("/api/seed", async (req, res) => {
+    try {
+      // Check if any admin exists
+      const admins = await storage.getAllAdmins();
+      if (admins.length > 0) {
+        return res.json({ message: "Database already initialized. Admin exists." });
+      }
+
+      // Create default admin
+      const hashedPassword = await bcrypt.hash("Knsgp2023", 10);
+      await storage.createAdmin({
+        name: "Md Kashif",
+        username: "Md Kashif",
+        password: hashedPassword,
+        role: "super_admin",
+        email: "admin@knsgp.ac.in",
+        department: "CSE"
+      });
+
+      return res.json({ 
+        success: true, 
+        message: "Database initialized! Default admin created.",
+        credentials: {
+          username: "Md Kashif",
+          password: "Knsgp2023 (Change this immediately!)"
+        }
+      });
+    } catch (error: any) {
+      return res.status(500).json({ message: "Setup failed", error: error.message });
+    }
+  });
+
   // ========== AUTH ROUTES ==========
   
   // Login route
