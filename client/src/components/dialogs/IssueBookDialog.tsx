@@ -6,17 +6,31 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Input } from "@/components/ui/input";
+import { useQuery } from "@tanstack/react-query";
 
 interface IssueBookDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   book: any;
-  students: any[];
+  branchId?: number;
   onSuccess: () => void;
 }
 
-export default function IssueBookDialog({ open, onOpenChange, book, students, onSuccess }: IssueBookDialogProps) {
+export default function IssueBookDialog({ open, onOpenChange, book, branchId, onSuccess }: IssueBookDialogProps) {
   const [selectedStudent, setSelectedStudent] = useState("");
+  const [studentSearch, setStudentSearch] = useState("");
+  
+  const { data: studentsResponse } = useQuery<any>({ 
+    queryKey: [`/api/students?limit=1000${branchId ? `&branchId=${branchId}` : ''}`],
+    enabled: open
+  });
+  const allStudents = studentsResponse?.data || [];
+  
+  const filteredStudents = allStudents.filter((s: any) => 
+    s.name.toLowerCase().includes(studentSearch.toLowerCase()) || 
+    s.rollNo.toLowerCase().includes(studentSearch.toLowerCase())
+  ).slice(0, 50); // Limit dropdown items for performance
+
   const [issueDate, setIssueDate] = useState(new Date().toISOString().split('T')[0]);
   const [dueDate, setDueDate] = useState(
     new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] // 14 days from now
@@ -61,11 +75,6 @@ export default function IssueBookDialog({ open, onOpenChange, book, students, on
         description: `Book issued to student successfully`,
       });
 
-      // Invalidate queries to refresh data
-      queryClient.invalidateQueries({ queryKey: ['/api/library/books'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/library/issues'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/students'] });
-
       setSelectedStudent("");
       onSuccess();
       onOpenChange(false);
@@ -86,24 +95,32 @@ export default function IssueBookDialog({ open, onOpenChange, book, students, on
         <DialogHeader>
           <DialogTitle>Issue Book</DialogTitle>
           <DialogDescription>
-            Issue "{book?.title}" to a student
+            Issue "{book?.title}" by {book?.author} to a student
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="student">Select Student</Label>
-            <Select value={selectedStudent} onValueChange={setSelectedStudent}>
-              <SelectTrigger id="student" data-testid="select-student">
-                <SelectValue placeholder="Choose a student" />
-              </SelectTrigger>
-              <SelectContent>
-                {students.map((student: any) => (
-                  <SelectItem key={student.id} value={student.id.toString()}>
-                    {student.name} ({student.rollNo})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="space-y-2">
+              <Input
+                placeholder="Search student..."
+                value={studentSearch}
+                onChange={(e) => setStudentSearch(e.target.value)}
+                className="mb-2"
+              />
+              <Select value={selectedStudent} onValueChange={setSelectedStudent}>
+                <SelectTrigger id="student" data-testid="select-student">
+                  <SelectValue placeholder="Choose a student" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredStudents.map((student: any) => (
+                    <SelectItem key={student.id} value={student.id.toString()}>
+                      {student.name} ({student.rollNo})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           
           <div className="space-y-2">

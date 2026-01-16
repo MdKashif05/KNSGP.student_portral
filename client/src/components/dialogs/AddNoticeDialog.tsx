@@ -12,9 +12,11 @@ interface AddNoticeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  branchId?: number | null;
+  branchName?: string | null;
 }
 
-export default function AddNoticeDialog({ open, onOpenChange, onSuccess }: AddNoticeDialogProps) {
+export default function AddNoticeDialog({ open, onOpenChange, onSuccess, branchId, branchName }: AddNoticeDialogProps) {
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [priority, setPriority] = useState("normal");
@@ -30,6 +32,7 @@ export default function AddNoticeDialog({ open, onOpenChange, onSuccess }: AddNo
         title,
         message,
         priority,
+        branchId: branchId || undefined,
       });
 
       toast({
@@ -53,14 +56,29 @@ export default function AddNoticeDialog({ open, onOpenChange, onSuccess }: AddNo
     }
   };
 
+  const isInvalidContext = !!branchName && !branchId;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add New Notice</DialogTitle>
-          <DialogDescription>Send a notice to all students</DialogDescription>
+          <DialogDescription>Send a notice to {branchName || "all students"}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="p-3 bg-muted rounded-md text-sm flex flex-col gap-1">
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Target Audience:</span>
+              <span className="font-semibold text-primary">
+                {branchName || (branchId ? "Current Branch" : "Global (All Branches)")}
+              </span>
+            </div>
+            {isInvalidContext && (
+              <span className="text-xs text-destructive font-medium">
+                ⚠️ Error: Branch ID missing. Please refresh or re-select branch.
+              </span>
+            )}
+          </div>
           <div className="space-y-2">
             <Label htmlFor="title">Title</Label>
             <Input
@@ -101,7 +119,7 @@ export default function AddNoticeDialog({ open, onOpenChange, onSuccess }: AddNo
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading} data-testid="button-submit-notice">
+            <Button type="submit" disabled={isLoading || isInvalidContext} data-testid="button-submit-notice">
               {isLoading ? "Adding..." : "Add Notice"}
             </Button>
           </DialogFooter>

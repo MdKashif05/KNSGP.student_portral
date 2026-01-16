@@ -31,10 +31,11 @@ interface AdminSidebarProps {
   onNavigate?: (item: string) => void;
   onLogout?: () => void;
   adminRole?: 'admin' | 'super_admin' | null;
+  hasBranchContext?: boolean;
 }
 
-const menuItems = [
-  { title: "Dashboard", icon: LayoutDashboard, id: "dashboard" },
+const fullMenuItems = [
+  { title: "Dashboard", icon: LayoutDashboard, id: "branch_home" },
   { title: "Students", icon: Users, id: "students" },
   { title: "Subjects", icon: BookOpenText, id: "subjects" },
   { title: "Attendance", icon: Calendar, id: "attendance" },
@@ -44,8 +45,12 @@ const menuItems = [
   { title: "Reports", icon: BarChart3, id: "reports" },
 ];
 
-export default function AdminSidebar({ activeItem = "dashboard", onNavigate, onLogout, adminRole }: AdminSidebarProps) {
-  const displayItems = [...menuItems];
+export default function AdminSidebar({ activeItem = "dashboard", onNavigate, onLogout, adminRole, hasBranchContext = false }: AdminSidebarProps) {
+  const baseItems = [
+    { title: "Batches", icon: GraduationCap, id: "dashboard" },
+    { title: "Reports", icon: BarChart3, id: "reports" }
+  ];
+  const displayItems = hasBranchContext ? [...fullMenuItems] : baseItems;
   if (adminRole === 'super_admin') {
     // Insert Admins after Dashboard
     displayItems.splice(1, 0, { title: "Admins", icon: Shield, id: "admins" });

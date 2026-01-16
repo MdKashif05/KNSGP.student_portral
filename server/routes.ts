@@ -11,7 +11,9 @@ import {
   insertMarksSchema,
   insertLibraryBookSchema,
   insertBookIssueSchema,
-  insertNoticeSchema
+  insertNoticeSchema,
+  insertBatchSchema,
+  insertBranchSchema
 } from "@shared/schema";
 
 // Helper function to calculate attendance status
@@ -30,6 +32,47 @@ function calculateGrade(percentage: number): string {
   if (percentage >= 60) return 'C';
   if (percentage >= 50) return 'D';
   return 'F';
+}
+
+import * as cheerio from 'cheerio';
+
+// Helper function to fetch SBTE updates
+async function fetchSBTEUpdates() {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+    const response = await fetch('https://sbte.bihar.gov.in/', { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) return null;
+    const html = await response.text();
+    const $ = cheerio.load(html);
+    
+    // Extract notices/news
+    const notices: string[] = [];
+    // Try different selectors that might contain news
+    $('marquee, .news-ticker, .latest-news, h2:contains("Notice"), h2:contains("Announcement")').each((_, el) => {
+      const text = $(el).text().trim().replace(/\s+/g, ' ');
+      if (text.length > 20) notices.push(text);
+    });
+
+    return notices.slice(0, 5).join('\n');
+  } catch (e) {
+    console.error("Error fetching SBTE updates:", e);
+    return null;
+  }
+}
+
+// Helper to fetch PYQ
+async function fetchPYQ() {
+  // Since we can't easily browse deeper without a real browser, we'll fetch the main PYQ page if it exists
+  // For now, we'll return a structured guide based on the known URL
+  return "To access Previous Year Questions (PYQ), please visit: https://sbte.bihar.gov.in/previous-year-questions\nThis page contains question papers sorted by Semester and Branch.";
+}
+
+// Helper to fetch Syllabus
+async function fetchSyllabus() {
+  return "To download the detailed syllabus for your branch and semester, please visit the official repository: https://www.gpmunger.ac.in/academics/syllabus/";
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -108,8 +151,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       } else if (role === 'student') {
         // Student login
-        // Check for invalid roll number format
-        if (!/^[A-Z0-9-]+$/i.test(trimmedUsername)) {
+        // Check for invalid roll number format (allow alphanumeric, hyphens, slashes, dots)
+        if (!/^[A-Z0-9-./]+$/i.test(trimmedUsername)) {
           return res.status(400).json({ 
             message: "Invalid student ID format" 
           });
@@ -131,24 +174,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        // Verify password (student name as password)
-        const isValid = trimmedPassword === student.name;
+        // Verify password
+        // First check if the password matches the stored hash
+        let isValid = await bcrypt.compare(trimmedPassword, student.password);
+        
+        // Fallback: check if password matches directly (for legacy/seeded data)
+        if (!isValid) {
+           // Only allow plaintext match if the stored password exactly matches the input
+           // This prevents the security issue where the name works as a password even after changing it
+           isValid = trimmedPassword === student.password;
+        }
 
         if (!isValid) {
           const attempts = (student.failedLoginAttempts ?? 0) + 1;
           let updateData: any = { failedLoginAttempts: attempts };
           let message = "Invalid password";
 
-          if (attempts >= 3) {
-            const lockoutTime = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+          if (attempts >= 10) {
+            const lockoutTime = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes
             updateData.lockoutUntil = lockoutTime;
-            message = "Account locked due to multiple failed attempts. Please try again in 15 minutes.";
+            message = "Account locked due to multiple failed attempts. Please try again in 2 minutes.";
             await storage.updateStudent(student.id, updateData);
             return res.status(403).json({ message });
           } else {
             await storage.updateStudent(student.id, updateData);
             return res.status(401).json({ 
-              message: `${message}. ${3 - attempts} attempts remaining.` 
+              message: `${message}. ${10 - attempts} attempts remaining.` 
             });
           }
         }
@@ -171,7 +222,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             id: student.id,
             rollNo: student.rollNo,
             name: student.name,
-            role: 'student'
+            role: 'student',
+            branchId: student.branchId
           }
         });
       } else {
@@ -221,11 +273,211 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: student.id,
           rollNo: student.rollNo,
           name: student.name,
-          role: 'student'
+          role: 'student',
+          branchId: student.branchId,
+          hasSecurityQuestion: !!student.securityQuestion
         });
       }
     } catch (error: any) {
       return res.status(500).json({ message: "Error fetching user", error: error.message });
+    }
+  });
+
+  // Change student password
+  app.post("/api/students/change-password", requireAuth, async (req, res) => {
+    try {
+      if (req.session.userRole !== 'student') {
+        return res.status(403).json({ message: "Only students can change their password here" });
+      }
+
+      const { currentPassword, newPassword } = req.body;
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: "Current and new passwords are required" });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({ message: "New password must be at least 6 characters" });
+      }
+
+      const student = await storage.getStudentByRollNo(req.session.username!);
+      if (!student) {
+        return res.status(404).json({ message: "Student not found" });
+      }
+
+      // Verify current password
+      // 1. Try Trimmed Input vs Trimmed Stored Password (Direct)
+      const inputPass = currentPassword.trim();
+      const storedPass = student.password;
+      
+      console.log(`[Password Change] Roll: ${student.rollNo}`);
+      console.log(`[Password Change] Input: '${inputPass}'`);
+      console.log(`[Password Change] Stored: '${storedPass}'`);
+
+      let isValid = false;
+
+      // Check 1: Direct Equality (Legacy Plaintext)
+      if (inputPass === storedPass || inputPass === storedPass.trim()) {
+        console.log("[Password Change] Matched via Direct Equality");
+        isValid = true;
+      }
+
+      // Check 3: Bcrypt (Secure Hash)
+      if (!isValid) {
+        try {
+          isValid = await bcrypt.compare(inputPass, storedPass);
+          console.log(`[Password Change] Matched via Bcrypt? ${isValid}`);
+        } catch (e) {
+          console.log("[Password Change] Bcrypt error:", e);
+          isValid = false;
+        }
+      }
+
+      console.log(`[Password Change] Final Result: ${isValid}`);
+
+      if (!isValid) {
+        return res.status(401).json({ message: "Incorrect current password" });
+      }
+
+      // Hash new password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      
+      // Update student password
+      await storage.updateStudent(student.id, { password: hashedPassword });
+      
+      // Log action (using system audit log since students don't create audit logs usually, or we can add a simple log)
+      // Actually auditLogs table has adminId column, so we can't log student actions easily linked to student.
+      // We'll just update the password.
+
+      res.json({ success: true, message: "Password changed successfully" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Error changing password", error: error.message });
+    }
+  });
+
+  // Set/Update Security Question
+  app.put("/api/students/security-question", requireAuth, async (req, res) => {
+    try {
+      if (req.session.userRole !== 'student') {
+        return res.status(403).json({ message: "Only students can set security questions" });
+      }
+
+      const { question, answer, currentPassword } = req.body;
+      if (!question || !answer || !currentPassword) {
+        return res.status(400).json({ message: "Question, answer, and current password are required" });
+      }
+
+      const student = await storage.getStudentByRollNo(req.session.username!);
+      if (!student) {
+        return res.status(404).json({ message: "Student not found" });
+      }
+
+      // Verify password first
+      // 1. Try Trimmed Input vs Trimmed Stored Password (Direct)
+      const inputPass = currentPassword.trim();
+      const storedPass = student.password;
+      
+      console.log(`[Security Question] Roll: ${student.rollNo}`);
+      console.log(`[Security Question] Input: '${inputPass}'`);
+      console.log(`[Security Question] Stored: '${storedPass}'`);
+      
+      let isValid = false;
+
+      // Check 1: Direct Equality (Legacy Plaintext)
+      if (inputPass === storedPass || inputPass === storedPass.trim()) {
+        console.log("[Security Question] Matched via Direct Equality");
+        isValid = true;
+      }
+
+      // Check 3: Bcrypt (Secure Hash)
+      if (!isValid) {
+        try {
+          isValid = await bcrypt.compare(inputPass, storedPass);
+          console.log(`[Security Question] Matched via Bcrypt? ${isValid}`);
+        } catch (e) {
+          console.log("[Security Question] Bcrypt error:", e);
+          isValid = false;
+        }
+      }
+
+      console.log(`[Security Question] Final Result: ${isValid}`);
+
+      if (!isValid) {
+        return res.status(401).json({ message: "Incorrect password" });
+      }
+
+      await storage.updateStudent(student.id, {
+        securityQuestion: question,
+        securityAnswer: answer.toLowerCase().trim() // Store normalized
+      });
+
+      res.json({ success: true, message: "Security question updated successfully" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Error updating security question", error: error.message });
+    }
+  });
+
+  // Get Security Question (Public/Unauthenticated)
+  app.post("/api/students/get-security-question", async (req, res) => {
+    try {
+      const { rollNo } = req.body;
+      if (!rollNo) {
+        return res.status(400).json({ message: "Roll number is required" });
+      }
+
+      const student = await storage.getStudentByRollNo(rollNo);
+      if (!student) {
+        return res.status(404).json({ message: "Student not found" });
+      }
+
+      if (!student.securityQuestion) {
+        return res.status(404).json({ message: "No security question set for this account" });
+      }
+
+      res.json({ question: student.securityQuestion });
+    } catch (error: any) {
+      res.status(500).json({ message: "Error fetching security question", error: error.message });
+    }
+  });
+
+  // Reset Password using Security Question (Public/Unauthenticated)
+  app.post("/api/students/reset-password-secure", async (req, res) => {
+    try {
+      const { rollNo, answer, newPassword } = req.body;
+      if (!rollNo || !answer || !newPassword) {
+        return res.status(400).json({ message: "Roll number, answer, and new password are required" });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({ message: "New password must be at least 6 characters" });
+      }
+
+      const student = await storage.getStudentByRollNo(rollNo);
+      if (!student) {
+        return res.status(404).json({ message: "Student not found" });
+      }
+
+      if (!student.securityAnswer) {
+        return res.status(400).json({ message: "Security reset not enabled for this account" });
+      }
+
+      // Verify answer (case insensitive)
+      if (student.securityAnswer !== answer.toLowerCase().trim()) {
+        return res.status(401).json({ message: "Incorrect security answer" });
+      }
+
+      // Hash new password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // Update password
+      await storage.updateStudent(student.id, { 
+        password: hashedPassword,
+        failedLoginAttempts: 0,
+        lockoutUntil: null
+      });
+
+      res.json({ success: true, message: "Password reset successfully" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Error resetting password", error: error.message });
     }
   });
 
@@ -365,73 +617,149 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== BATCH & BRANCH ROUTES ==========
+  app.get("/api/batches", requireAuth, async (req, res) => {
+    try {
+      const batches = await storage.getAllBatches();
+      res.json(batches);
+    } catch (error: any) {
+      res.status(500).json({ message: "Error fetching batches", error: error.message });
+    }
+  });
+
+  app.post("/api/batches", requireAdmin, async (req, res) => {
+    try {
+      const validated = insertBatchSchema.parse(req.body);
+      const batch = await storage.createBatch(validated);
+      res.status(201).json(batch);
+    } catch (error: any) {
+      res.status(400).json({ message: "Error creating batch", error: error.message });
+    }
+  });
+
+  app.put("/api/batches/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const batch = await storage.updateBatch(id, req.body);
+      if (!batch) {
+        return res.status(404).json({ message: "Batch not found" });
+      }
+      res.json(batch);
+    } catch (error: any) {
+      res.status(400).json({ message: "Error updating batch", error: error.message });
+    }
+  });
+
+  app.delete("/api/batches/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      console.log(`[API] Request to delete batch ${id}`);
+      const deleted = await storage.deleteBatch(id);
+      if (!deleted) {
+        console.log(`[API] Batch ${id} not found`);
+        return res.status(404).json({ message: "Batch not found" });
+      }
+      console.log(`[API] Batch ${id} deleted successfully`);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error(`[API] Error deleting batch ${req.params.id}:`, error);
+      res.status(500).json({ message: "Error deleting batch", error: error.message });
+    }
+  });
+
+  app.get("/api/branches", requireAuth, async (req, res) => {
+    try {
+      const batchIdRaw = req.query.batchId as string;
+      const batchId = parseInt(batchIdRaw);
+      if (!batchId || isNaN(batchId)) {
+        return res.status(400).json({ message: "batchId is required" });
+      }
+      const branches = await storage.getBranchesByBatch(batchId);
+      res.json(branches);
+    } catch (error: any) {
+      res.status(500).json({ message: "Error fetching branches", error: error.message });
+    }
+  });
+
+  app.post("/api/branches", requireAdmin, async (req, res) => {
+    try {
+      const validated = insertBranchSchema.parse(req.body);
+      const branch = await storage.createBranch(validated);
+      res.status(201).json(branch);
+    } catch (error: any) {
+      res.status(400).json({ message: "Error creating branch", error: error.message });
+    }
+  });
+
+  app.put("/api/branches/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const branch = await storage.updateBranch(id, req.body);
+      if (!branch) {
+        return res.status(404).json({ message: "Branch not found" });
+      }
+      res.json(branch);
+    } catch (error: any) {
+      res.status(400).json({ message: "Error updating branch", error: error.message });
+    }
+  });
+
+  app.delete("/api/branches/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      console.log(`[API] Request to delete branch ${id}`);
+      const deleted = await storage.deleteBranch(id);
+      if (!deleted) {
+        console.log(`[API] Branch ${id} not found`);
+        return res.status(404).json({ message: "Branch not found" });
+      }
+      console.log(`[API] Branch ${id} deleted successfully`);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error(`[API] Error deleting branch ${req.params.id}:`, error);
+      res.status(500).json({ message: "Error deleting branch", error: error.message });
+    }
+  });
+
   // ========== STUDENT ROUTES (Admin only for write operations) ==========
   
   app.get("/api/students", requireAuth, async (req, res) => {
     try {
-      const students = await storage.getAllStudents();
+      // Parse pagination params
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 50;
+      const offset = (page - 1) * limit;
+      const department = (req.query.department as string) || undefined;
+      const branchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
+
+      const { data: students, total } = await storage.getAllStudents(limit, offset, department, branchId);
+      const studentIds = students.map(s => s.id);
       
-      // Fetch all data in parallel instead of per-student
-      const [allAttendance, allMarks, allBookIssues] = await Promise.all([
-        storage.getAllAttendance(),
-        storage.getAllMarks(),
-        storage.getAllBookIssues()
-      ]);
+      // Efficiently fetch stats using aggregation (filtered by current page students)
+      const { attendanceStats, marksStats, issueStats } = await storage.getStudentStats(studentIds);
       
       // Create maps for quick lookup
-      const attendanceByStudent = new Map();
-      const marksByStudent = new Map();
-      const bookIssuesByStudent = new Map();
-      
-      allAttendance.forEach(record => {
-        if (!attendanceByStudent.has(record.studentId)) {
-          attendanceByStudent.set(record.studentId, []);
-        }
-        attendanceByStudent.get(record.studentId).push(record);
-      });
-      
-      allMarks.forEach(record => {
-        if (!marksByStudent.has(record.studentId)) {
-          marksByStudent.set(record.studentId, []);
-        }
-        marksByStudent.get(record.studentId).push(record);
-      });
-      
-      allBookIssues.forEach(record => {
-        if (!bookIssuesByStudent.has(record.studentId)) {
-          bookIssuesByStudent.set(record.studentId, []);
-        }
-        bookIssuesByStudent.get(record.studentId).push(record);
-      });
+      const attendanceMap = new Map(attendanceStats.map(s => [s.studentId, s.avgPercentage]));
+      const marksMap = new Map(marksStats.map(s => [s.studentId, s.avgPercentage]));
+      const issueMap = new Map(issueStats.map(s => [s.studentId, s.count]));
       
       // Calculate stats for each student
-      const studentsWithStats = students.map(student => {
-        const attendanceRecords = attendanceByStudent.get(student.id) || [];
-        const marksRecords = marksByStudent.get(student.id) || [];
-        const bookIssues = bookIssuesByStudent.get(student.id) || [];
-        
-        // Calculate average attendance percentage from monthly records
-        const attendancePercentage = attendanceRecords.length > 0 
-          ? (attendanceRecords.reduce((sum: number, a: any) => sum + a.percentage, 0) / attendanceRecords.length).toFixed(1) 
-          : '0.0';
-        
-        // Calculate average marks percentage
-        const avgMarksPercentage = marksRecords.length > 0 
-          ? (marksRecords.reduce((sum: number, m: any) => sum + m.percentage, 0) / marksRecords.length).toFixed(1) 
-          : '0.0';
-        
-        // Count issued books (not returned)
-        const booksIssued = bookIssues.filter((b: any) => b.status === 'issued').length;
-        
-        return {
+      const studentsWithStats = students.map(student => ({
           ...student,
-          attendancePercentage,
-          avgMarks: avgMarksPercentage,
-          booksIssued
-        };
-      });
+          attendancePercentage: Number(attendanceMap.get(student.id) || 0).toFixed(1),
+          avgMarks: Number(marksMap.get(student.id) || 0).toFixed(1),
+          booksIssued: Number(issueMap.get(student.id) || 0)
+      }));
       
-      res.json(studentsWithStats);
+      res.json({
+        data: studentsWithStats,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit)
+        }
+      });
     } catch (error: any) {
       res.status(500).json({ message: "Error fetching students", error: error.message });
     }
@@ -440,6 +768,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/students", requireAdmin, async (req, res) => {
     try {
       const validatedData = insertStudentSchema.parse(req.body);
+      
+      const existing = await storage.getStudentByRollNo(validatedData.rollNo);
+      if (existing) {
+        return res.status(409).json({ message: "A student with this roll number already exists" });
+      }
       
       // Hash password before creating
       const hashedPassword = await bcrypt.hash(validatedData.password, 10);
@@ -457,6 +790,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       
       let updateData = req.body;
+
+      if (updateData.rollNo) {
+        const existing = await storage.getStudentByRollNo(updateData.rollNo);
+        if (existing && existing.id !== id) {
+          return res.status(409).json({ message: "Another student already has this roll number" });
+        }
+      }
       
       // If password is being updated, hash it
       if (updateData.password) {
@@ -491,7 +831,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get("/api/subjects", requireAuth, async (req, res) => {
     try {
-      const subjects = await storage.getAllSubjects();
+      const department = (req.query.department as string) || undefined;
+      const branchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
+      const subjects = await storage.getAllSubjects(department, branchId);
       res.json(subjects);
     } catch (error: any) {
       res.status(500).json({ message: "Error fetching subjects", error: error.message });
@@ -538,15 +880,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get("/api/attendance", requireAuth, async (req, res) => {
     try {
-      let attendanceRecords;
       if (req.session.userRole === 'student') {
         // Students can only see their own attendance
-        attendanceRecords = await storage.getAttendanceByStudent(req.session.userId!);
+        const attendanceRecords = await storage.getAttendanceByStudent(req.session.userId!);
+        return res.json(attendanceRecords);
       } else {
-        // Admins can see all attendance
-        attendanceRecords = await storage.getAllAttendance();
+        // Admins can see all attendance (paginated)
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 50;
+        const offset = (page - 1) * limit;
+        const search = (req.query.search as string) || "";
+        const department = (req.query.department as string) || undefined;
+        const branchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
+
+        const { data, total } = await storage.getAllAttendance(limit, offset, search, department, branchId);
+         
+         return res.json({
+           data: data,
+           pagination: {
+             page,
+             limit,
+             total,
+             totalPages: Math.ceil(total / limit)
+           }
+         });
       }
-      res.json(attendanceRecords);
     } catch (error: any) {
       res.status(500).json({ message: "Error fetching attendance", error: error.message });
     }
@@ -660,15 +1018,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get("/api/marks", requireAuth, async (req, res) => {
     try {
-      let marksRecords;
       if (req.session.userRole === 'student') {
         // Students can only see their own marks
-        marksRecords = await storage.getMarksByStudent(req.session.userId!);
+        const marksRecords = await storage.getMarksByStudent(req.session.userId!);
+        return res.json(marksRecords);
       } else {
-        // Admins can see all marks
-        marksRecords = await storage.getAllMarks();
+        // Admins can see all marks (paginated)
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 50;
+        const search = req.query.search as string || "";
+        const department = (req.query.department as string) || undefined;
+        const branchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
+        const offset = (page - 1) * limit;
+
+        const { data, total } = await storage.getAllMarks(limit, offset, search, department, branchId);
+
+         return res.json({
+           data: data,
+           pagination: {
+             page,
+             limit,
+             total,
+             totalPages: Math.ceil(total / limit)
+           }
+         });
       }
-      res.json(marksRecords);
     } catch (error: any) {
       res.status(500).json({ message: "Error fetching marks", error: error.message });
     }
@@ -782,7 +1156,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get("/api/library/books", requireAuth, async (req, res) => {
     try {
-      const books = await storage.getAllLibraryBooks();
+      const branchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
+      const books = await storage.getAllLibraryBooks(branchId);
       res.json(books);
     } catch (error: any) {
       res.status(500).json({ message: "Error fetching library books", error: error.message });
@@ -892,8 +1267,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get("/api/notices", requireAuth, async (req, res) => {
     try {
-      const notices = await storage.getAllNotices();
-      res.json(notices);
+      const branchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
+      const notices = await storage.getAllNotices(branchId);
+      // Limit to latest 100 notices to prevent payload bloat
+      res.json(notices.slice(0, 100));
     } catch (error: any) {
       res.status(500).json({ message: "Error fetching notices", error: error.message });
     }
@@ -949,6 +1326,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/analytics/global", requireAuth, async (req, res) => {
+    try {
+      const branchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
+      const stats = await storage.getGlobalStats(branchId);
+      res.json(stats);
+    } catch (error: any) {
+      res.status(500).json({ message: "Error fetching analytics", error: error.message });
+    }
+  });
+
   // ========== CHATBOT ROUTES ==========
   
   app.post("/api/chat", requireAuth, async (req, res) => {
@@ -966,32 +1353,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const getSimpleResponse = (msg: string) => {
         const m = msg.toLowerCase();
         
-        // Easter eggs
-        if (m.includes("shailya")) return "Too much closed 😅";
-        if (m.includes("ap") || m.includes("anurag")) return "Room 309 Unit 03, Guided By Anurag Pandey";
-        if (m.includes("pathak")) return "Love Guru without a love life 😄";
-        if (m.includes("founder") || m.includes("create")) return "Mohammed Kashif, Rajan Kumar, and Md Shad 🎉";
+        // Easter eggs (Enhanced)
+        if (m.includes("shailya")) return "Too much closed 😅 (The mystery continues...)";
+        if (m.includes("ap") || m.includes("anurag")) return "Room 309 Unit 03, Guided By Anurag Pandey (The Legend of CSE)";
+        if (m.includes("pathak")) return "Love Guru without a love life 😄 (But a heart of gold!)";
+        if (m.includes("founder") || m.includes("create") || m.includes("trained")) return "I was architected by the Visionary Trio: Mohammed Kashif, Rajan Kumar, and Md Shad. 🎉 They trained me to be the ultimate academic assistant!";
         
-        // General queries
-        if (m.includes("syllabus")) return "For CSE, we cover:\n- Sem 1-2: Basics (Math, Physics, C)\n- Sem 3: Data Structures, OS, DBMS\n- Sem 4: Java, Networks, Python\n- Sem 5: Data Science, Cloud, Web Dev\n- Sem 6: ML, Cyber Security, Project. (Check SBTE website for full PDF)";
-        if (m.includes("admission")) return "Eligibility: 10th pass (35%). Admission via DCECE (BCECEB) entrance exam.";
-        if (m.includes("fee")) return "Govt Colleges: ₹4,800 – ₹10,610 per year. Private: ₹1.3L – ₹1.5L per year.";
-        if (m.includes("attendance")) return "You can check your attendance in the Dashboard or Attendance tab.";
-        if (m.includes("mark") || m.includes("result")) return "Check the Marks tab for your latest results.";
-        if (m.includes("library") || m.includes("book")) return "Visit the Library section to see available books.";
-        if (m.includes("subject")) return "We cover C, Data Structures, DBMS, OS, Web Dev, and more.";
-        if (m.includes("exam")) return "Exams are held semester-wise (Odd: July-Dec, Even: Jan-June). Check SBTE website for schedules.";
-        if (m.includes("sbte") || m.includes("update")) return "Please check https://sbte.bihar.gov.in/ for latest updates.";
+        // 📚 SYLLABUS & ACADEMICS
+        if (m.includes("syllabus")) {
+           if (m.includes("sem 1") || m.includes("1st sem")) return "📚 **Semester 1 Syllabus**:\n- Engineering Mathematics-I\n- Engineering Physics-I\n- Engineering Chemistry\n- Communication Skills in English\n- Engineering Graphics\n- Workshop Practice\n- Sports & Yoga\n\n(Common for all branches)";
+           if (m.includes("sem 2") || m.includes("2nd sem")) return "📚 **Semester 2 Syllabus**:\n- Engineering Mathematics-II\n- Engineering Physics-II\n- Introduction to IT Systems\n- Fundamentals of Electrical & Electronics Engineering\n- Engineering Mechanics\n- Environmental Science";
+           if (m.includes("sem 3") || m.includes("3rd sem")) return "📚 **Semester 3 (CSE) Syllabus**:\n- Discrete Mathematics\n- Computer Organization & Architecture\n- Digital Electronics\n- Data Structures & Algorithms\n- Object Oriented Programming (C++)\n- Web Technology";
+           if (m.includes("sem 4") || m.includes("4th sem")) return "📚 **Semester 4 (CSE) Syllabus**:\n- Operating Systems\n- Design & Analysis of Algorithms\n- Database Management Systems (DBMS)\n- Computer Networks\n- Software Engineering";
+           if (m.includes("sem 5") || m.includes("5th sem")) return "📚 **Semester 5 (CSE) Syllabus**:\n- Internet of Things (IoT)\n- Java Programming\n- Artificial Intelligence\n- Cloud Computing\n- Elective-I (Data Science / Cyber Security)\n- Summer Internship Project";
+           if (m.includes("sem 6") || m.includes("6th sem")) return "📚 **Semester 6 (CSE) Syllabus**:\n- Entrepreneurship & Start-ups\n- Major Project\n- Network Security\n- Mobile Application Development\n- Elective-II (Machine Learning / Blockchain)";
+           return "For CSE, we cover 6 semesters. Which semester's syllabus do you need? (e.g., 'Sem 3 syllabus')";
+        }
+
+        // 🏫 COLLEGE INFO
+        if (m.includes("knsgp") || m.includes("college") || m.includes("about")) return "🏫 **About KNSGP Samastipur**:\nEstablished in 2016, Kameshwar Narayan Singh Govt Polytechnic is a premier institute in Bihar.\n\n📍 **Location**: Kishunpur, Tabhka, Samastipur\n🎓 **Principal**: Prof. Aftab Anjum\n💻 **CSE HOD**: Prof. Raghvendra Pratap\n🌐 **Website**: knsgpsamastipur.ac.in";
         
-        // Greetings
-        if (m.match(/\b(hi|hello|hey|hii)\b/)) return "Hii! 👋 I'm EduManage! How can I help you today? 😊";
-        if (m.match(/\b(bye|goodbye|see you)\b/)) return "Bye! 👋 See you later! 😊";
+        // 📝 ADMISSION
+        if (m.includes("admission") || m.includes("entrance")) return "🎓 **Admission Process**:\n1. **Eligibility**: 10th Pass (Min 35%)\n2. **Entrance Exam**: DCECE (conducted by BCECEB)\n3. **Counseling**: Online via BCECEB portal\n4. **Lateral Entry**: Available for 12th Sci/ITI students (Direct 3rd Sem)";
+
+        // 💰 FEES
+        if (m.includes("fee")) return "💸 **Fee Structure (Govt Polytechnic)**:\n- **Admission Fee**: ₹5 (One time)\n- **Tuition Fee**: ₹120/year\n- **Development Fee**: ₹1000/year\n- **Exam Fee**: ₹1000/sem\n- **Total Approx**: ₹2500 - ₹3000 per year (Very affordable!)";
+
+        // 📅 EXAMS
+        if (m.includes("exam") || m.includes("routine") || m.includes("date")) return "📅 **Exam Updates**:\n- Exams are held semester-wise (Odd: Dec/Jan, Even: May/June).\n- Check **sbte.bihar.gov.in** for the latest routine.\n- Passing Marks: 40% in Theory & Practical separately.";
+
+        // 📋 ATTENDANCE & MARKS
+        if (m.includes("attendance")) return "📊 **Attendance**: You can check your real-time attendance in the **Attendance** tab on your dashboard. 75% is mandatory for exams!";
+        if (m.includes("mark") || m.includes("result")) return "📈 **Results**: Check the **Marks** tab for your internal and external marks history.";
         
-        return "I'm EduManage! I can help with syllabus, admission, attendance, marks, and library info. (Note: Set OPENAI_API_KEY for full AI capabilities)";
+        // 📚 LIBRARY
+        if (m.includes("library") || m.includes("book")) return "📚 **Library**: We have a rich collection of books for all semesters! Visit the **Library** section to check availability and issue status.";
+        
+        // 🌐 SBTE
+        if (m.includes("sbte") || m.includes("board")) return "🏛️ **SBTE Bihar**: The State Board of Technical Education governs our curriculum and exams.\n🌐 Website: sbte.bihar.gov.in";
+
+        // 👋 GREETINGS
+        if (m.match(/\b(hi|hello|hey|hii|hola)\b/)) return "Hii! 👋 I'm **EduManage Pro**! 🧠\nI'm fully activated and ready to help with:\n\n📚 Syllabus & Courses\n📝 Admissions & Fees\n📅 Exams & Results\n🏫 College Info\n\nAsk me anything! ✨";
+        if (m.match(/\b(bye|goodbye|see you)\b/)) return "Bye! 👋 See you later! Keep learning! 🚀";
+        if (m.match(/\b(thank|thanks)\b/)) return "You're welcome! Happy to help! ✨";
+
+        // DEFAULT POWERFUL RESPONSE
+        return "⚡ **EduManage AI Pro** is active!\nI can help you with:\n\n- **Syllabus** (e.g., 'Sem 3 syllabus')\n- **Admissions** (e.g., 'How to apply?')\n- **Fees** (e.g., 'College fees')\n- **Exams** (e.g., 'Exam date')\n- **Faculty** (e.g., 'Who is HOD?')\n\nJust ask! 🚀";
       };
 
-      // If OpenAI is not configured, use fallback immediately
-      if (!isOpenAIConfigured) {
+      // Check for Gemini Key
+      const geminiKey = process.env.GEMINI_API_KEY;
+
+      // If neither OpenAI nor Gemini is configured, use fallback immediately
+      if (!isOpenAIConfigured && !geminiKey) {
         return res.json({ response: getSimpleResponse(message) });
       }
 
@@ -1003,63 +1417,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `- ${subject.name} (${subject.code}) - Taught by ${subject.instructor}`
       ).join('\n');
 
-      // Fetch live SBTE Bihar website data for current information
+
+      // Fetch live SBTE Bihar website data using Cheerio
       let livesbteData = '\n\nLIVE SBTE BIHAR UPDATES:\n';
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
-        
-        const sbteResponse = await fetch('https://sbte.bihar.gov.in/', {
-          signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-        
-        if (sbteResponse.ok) {
-          const sbteHtml = await sbteResponse.text();
-          
-          // Extract announcements using multiple patterns to be more robust
-          const patterns = [
-            /Important\s+Announcement([\s\S]{0,1000})/i,
-            /Latest\s+Notice([\s\S]{0,1000})/i,
-            /News([\s\S]{0,1000})/i,
-            /<h2[^>]*>.*?(Announcement|Notice|Update).*?<\/h2>([\s\S]{0,1000})/i
-          ];
-          
-          let foundMatch = false;
-          for (const pattern of patterns) {
-            const match = sbteHtml.match(pattern);
-            if (match) {
-              // For h2 pattern, prefer match[2] (content after heading), then match[1], then match[0]
-              const extractedText = match[2] || match[1] || match[0];
-              const cleanText = extractedText
-                .replace(/<[^>]*>/g, ' ')  // Remove HTML tags
-                .replace(/\s+/g, ' ')       // Normalize whitespace
-                .replace(/&nbsp;/g, ' ')    // Replace HTML entities
-                .trim()
-                .substring(0, 400);
-              
-              if (cleanText.length > 50) {
-                livesbteData += `${cleanText}...\n\nℹ️ For complete latest updates, visit: https://sbte.bihar.gov.in/\n`;
-                foundMatch = true;
-                console.log('Successfully extracted live SBTE data:', cleanText.substring(0, 100));
-                break;
-              }
-            }
-          }
-          
-          if (!foundMatch) {
-            livesbteData += 'Visit https://sbte.bihar.gov.in/ for the latest official announcements and updates.\n';
-          }
-        } else {
-          livesbteData += 'Visit https://sbte.bihar.gov.in/ for the latest official announcements and updates.\n';
-        }
-      } catch (error: any) {
-        if (error.name === 'AbortError') {
-          console.log('SBTE fetch timeout after 3 seconds');
-        } else {
-          console.log('Could not fetch live SBTE data:', error);
-        }
+      const sbteUpdates = await fetchSBTEUpdates();
+      if (sbteUpdates) {
+        livesbteData += sbteUpdates + '\n\nℹ️ For complete latest updates, visit: https://sbte.bihar.gov.in/\n';
+      } else {
         livesbteData += 'For the most current SBTE Bihar announcements, exam schedules, and registration updates, please visit the official website: https://sbte.bihar.gov.in/\n';
+      }
+
+      // Check if user is asking for PYQ or Syllabus and fetch specifically
+      const lowerMsg = message.toLowerCase();
+      if (lowerMsg.includes('pyq') || lowerMsg.includes('previous year') || lowerMsg.includes('question paper')) {
+        const pyqInfo = await fetchPYQ();
+        livesbteData += `\n\nPREVIOUS YEAR QUESTIONS (PYQ) INFO:\n${pyqInfo}\n`;
+      }
+      
+      if (lowerMsg.includes('syllabus') || lowerMsg.includes('curriculum')) {
+        const syllabusInfo = await fetchSyllabus();
+        livesbteData += `\n\nSYLLABUS DOWNLOAD INFO:\n${syllabusInfo}\n`;
       }
 
       // SBTE Bihar information context
@@ -1285,6 +1662,8 @@ EVALUATION PATTERN:
 
 OFFICIAL REFERENCES:
 - SBTE Bihar Official Website: https://sbte.bihar.gov.in/
+- Previous Year Questions (PYQ): https://sbte.bihar.gov.in/previous-year-questions
+- Syllabus Repository (GP Munger): https://www.gpmunger.ac.in/academics/syllabus/
 - CSE Syllabus PDF: https://sbte.bihar.gov.in/uploads/Syllabus/2024-25/S02/18.%20Computer%20Science%20&%20Engineering.pdf
 
 ${livesbteData}
@@ -1295,6 +1674,8 @@ GUIDELINES:
 - For questions, start with casual phrases: "Great question!", "Sure thing!", "Absolutely!"
 - Keep responses conversational and friendly, not robotic
 - IMPORTANT: You have access to LIVE, REAL-TIME data from SBTE Bihar website. Always check the "LATEST UPDATES FROM SBTE BIHAR WEBSITE (Real-time)" section above for current announcements and information
+- IMPORTANT: For Previous Year Questions (PYQ), refer students to: https://sbte.bihar.gov.in/previous-year-questions
+- IMPORTANT: For detailed Syllabus downloads, refer students to: https://www.gpmunger.ac.in/academics/syllabus/
 - CRITICAL: Always provide COMPLETE, DETAILED information from the knowledge base above. Don't just give brief answers or links - give full details about:
   - Syllabus: Complete semester-wise subjects with all topics
   - Departments: All branches with codes, duration, and focus areas
@@ -1309,29 +1690,48 @@ GUIDELINES:
 - IMPORTANT: When asked about syllabus, provide the complete semester-wise syllabus details from the knowledge base above with all subjects and topics
 - IMPORTANT: When asked about KNSGP college, include the establishment details: established vide Department of Science & Technology letter no. 890 dated 29.03.2016, proposal initiated by Finance Department Resolution No. 96 Vi (2) dt. 03.01.2008, cabinet approval on 25.01.2016, 10 acres donated by Roy Ganga Ram Kameshwar Narayan Public Trust, HUB in Centre of Excellence in 3D Printing with IIT Patna
 - IMPORTANT: When asked about the people in SPECIAL INFORMATION (AP, Pathak Jii, Shailya Singh, founders), always provide the exact response from the knowledge base. For example:
-  - "Who is Shailya Singh?" → "Too much closed 😅"
-  - "Who is AP?" → "Room 309 Unit 03, Guided By Anurag Pandey"
-  - "Who is Pathak Jii?" → "Love Guru without a love life 😄"
-  - "Who is the founder?" → "Mohammed Kashif, Rajan Kumar, and Md Shad 🎉"
+  - "Who is Shailya Singh?" → "Too much closed 😅 (The mystery continues...)"
+  - "Who is AP?" → "Room 309 Unit 03, Guided By Anurag Pandey (The Legend of CSE)"
+  - "Who is Pathak Jii?" → "Love Guru without a love life 😄 (But a heart of gold!)"
+  - "Who is the founder?" or "Who trained you?" → "I was architected by the Visionary Trio: Mohammed Kashif, Rajan Kumar, and Md Shad. 🎉 They trained me to be the ultimate academic assistant!"
 - End responses with helpful follow-ups when appropriate`;
 
-      // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          {
-            role: "system",
-            content: sbteContext
-          },
-          {
-            role: "user",
-            content: message
-          }
-        ],
-        max_tokens: 500,
-      });
+      let response = "";
 
-      const response = completion.choices[0]?.message?.content || "I'm sorry, I couldn't process that request.";
+      // Try Gemini first if key is present
+      if (geminiKey) {
+        try {
+          const { GoogleGenerativeAI } = await import("@google/generative-ai");
+          const genAI = new GoogleGenerativeAI(geminiKey);
+          const model = genAI.getGenerativeModel({ 
+            model: "gemini-1.5-flash", 
+            systemInstruction: sbteContext 
+          });
+          const result = await model.generateContent(message);
+          response = result.response.text();
+        } catch (e) {
+          console.error("Gemini Error:", e);
+        }
+      }
+
+      // Fallback to OpenAI if Gemini failed or key not present
+      if (!response && isOpenAIConfigured) {
+        // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+        const completion = await openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: [
+            { role: "system", content: sbteContext },
+            { role: "user", content: message }
+          ],
+          max_tokens: 500,
+        });
+        response = completion.choices[0]?.message?.content || "";
+      }
+
+      // Final fallback
+      if (!response) {
+         response = getSimpleResponse(message);
+      }
       
       res.json({ response });
     } catch (error: any) {

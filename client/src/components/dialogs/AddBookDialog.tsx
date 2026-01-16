@@ -10,9 +10,10 @@ interface AddBookDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  branchId?: number | null;
 }
 
-export default function AddBookDialog({ open, onOpenChange, onSuccess }: AddBookDialogProps) {
+export default function AddBookDialog({ open, onOpenChange, onSuccess, branchId }: AddBookDialogProps) {
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
   const [totalCopies, setTotalCopies] = useState("");
@@ -30,6 +31,7 @@ export default function AddBookDialog({ open, onOpenChange, onSuccess }: AddBook
         author,
         copiesAvailable: copies,
         totalCopies: copies,
+        branchId: branchId ? branchId : undefined,
       });
 
       toast({
@@ -68,16 +70,6 @@ export default function AddBookDialog({ open, onOpenChange, onSuccess }: AddBook
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Enter book title"
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="author">Author</Label>
-            <Input
-              id="author"
-              value={author}
-              onChange={(e) => setAuthor(e.target.value)}
-              placeholder="Enter author name"
               required
             />
           </div>

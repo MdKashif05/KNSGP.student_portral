@@ -5,7 +5,10 @@ interface MarksDistributionChartProps {
   data: any[];
 }
 
-export default function MarksDistributionChart({ data }: MarksDistributionChartProps) {
+export default function MarksDistributionChart({ data = [] }: MarksDistributionChartProps) {
+  // Ensure data is an array
+  const safeData = Array.isArray(data) ? data : [];
+
   // Create marks distribution ranges
   const ranges = [
     { range: '0-20', min: 0, max: 20 },
@@ -16,7 +19,7 @@ export default function MarksDistributionChart({ data }: MarksDistributionChartP
   ];
 
   const distribution = ranges.map(({ range, min, max }) => {
-    const count = data.filter((mark: any) => {
+    const count = safeData.filter((mark: any) => {
       const percentage = mark.percentage || 0;
       return percentage >= min && percentage <= max;
     }).length;

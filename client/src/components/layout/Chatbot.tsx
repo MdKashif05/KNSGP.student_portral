@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { MessageCircle, Send, Bot, User } from "lucide-react";
+import { MessageCircle, Send, Bot, User, Brain, Sparkles, Loader2 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -93,24 +93,26 @@ export default function Chatbot() {
   return (
     <div style={{ 
       position: 'fixed', 
-      bottom: 0, 
-      right: 0, 
+      bottom: '30px', 
+      right: '30px', 
       zIndex: 9999,
       pointerEvents: 'none'
     }}>
       {/* Floating Chat Button with gradient and pulse effect - Always visible on mobile */}
-      <Button
-        onClick={() => setIsOpen(true)}
-        className="h-16 w-16 rounded-full shadow-2xl bg-gradient-to-br from-primary to-purple-600 hover:shadow-purple-500/50 hover:scale-110 transition-all duration-300 animate-pulse m-4"
-        size="icon"
-        data-testid="button-open-chatbot"
-        style={{ 
-          animationDuration: '2s',
-          pointerEvents: 'auto'
-        }}
-      >
-        <MessageCircle className="h-7 w-7 text-white" />
-      </Button>
+      <div className="relative m-4 pointer-events-auto group">
+        <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-emerald-500 text-white text-xs font-bold py-1 px-3 rounded-full shadow-lg opacity-100 transition-opacity whitespace-nowrap">
+          Chat with us!
+          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-emerald-500"></div>
+        </div>
+        <Button
+          onClick={() => setIsOpen(true)}
+          className="h-16 w-16 rounded-full shadow-2xl bg-emerald-500 hover:bg-emerald-600 hover:scale-110 transition-all duration-300"
+          size="icon"
+          data-testid="button-open-chatbot"
+        >
+          <Bot className="h-8 w-8 text-white" />
+        </Button>
+      </div>
 
       {/* Chat Dialog */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -139,8 +141,8 @@ export default function Chatbot() {
                     data-testid={`message-${msg.role}-${idx}`}
                   >
                     {msg.role === "assistant" && (
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <Bot className="h-4 w-4 text-primary" />
+                      <div className="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <Sparkles className="h-4 w-4 text-white" />
                       </div>
                     )}
                     <div
@@ -167,14 +169,14 @@ export default function Chatbot() {
                 ))}
                 {chatMutation.isPending && (
                   <div className="flex gap-3">
-                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Bot className="h-4 w-4 text-primary" />
+                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-sm">
+                      <Loader2 className="h-4 w-4 text-white animate-spin" />
                     </div>
                     <div className="bg-muted rounded-lg p-3">
                       <div className="flex gap-1">
-                        <div className="h-2 w-2 bg-primary/60 rounded-full animate-bounce" />
-                        <div className="h-2 w-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }} />
-                        <div className="h-2 w-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
+                        <div className="h-2 w-2 bg-indigo-500/60 rounded-full animate-bounce" />
+                        <div className="h-2 w-2 bg-purple-500/60 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }} />
+                        <div className="h-2 w-2 bg-pink-500/60 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
                       </div>
                     </div>
                   </div>

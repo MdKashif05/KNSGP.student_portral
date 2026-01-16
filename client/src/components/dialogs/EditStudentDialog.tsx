@@ -31,7 +31,11 @@ export default function EditStudentDialog({ open, onOpenChange, student, onSucce
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!rollNo || !name || !password) {
+    const trimmedRollNo = rollNo.trim();
+    const trimmedName = name.trim();
+    const trimmedPassword = password.trim();
+
+    if (!trimmedRollNo || !trimmedName || !trimmedPassword) {
       toast({
         title: "Error",
         description: "All fields are required",
@@ -40,12 +44,21 @@ export default function EditStudentDialog({ open, onOpenChange, student, onSucce
       return;
     }
 
+    if (!/^\d{4}-[A-Za-z]+-\d+$/i.test(trimmedRollNo)) {
+      toast({
+        title: "Invalid roll number",
+        description: "Use format YYYY-BRANCH-NN, for example 2023-CSE-57",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
       const response = await apiRequest("PUT", `/api/students/${student.id}`, {
-        rollNo: rollNo.trim(),
-        name: name.trim(),
-        password: password.toLowerCase().trim(),
+        rollNo: trimmedRollNo,
+        name: trimmedName,
+        password: trimmedPassword,
       });
 
       await response.json();

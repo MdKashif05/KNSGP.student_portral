@@ -1,24 +1,38 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import StatCard from "@/components/common/StatCard";
 import AttendanceChart from "@/components/charts/AttendanceChart";
 import MarksChart from "@/components/charts/MarksChart";
 import LibraryBookCard from "@/components/common/LibraryBookCard";
 import DataTable from "@/components/common/DataTable";
-import { TrendingUp, Award, BookOpen, Calendar, Bell } from "lucide-react";
+import { TrendingUp, Award, BookOpen, Calendar, Bell, Key, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
+import { useState, useEffect } from "react";
+import ChangePasswordDialog from "@/components/dialogs/ChangePasswordDialog";
 
 interface StudentDashboardProps {
   studentName: string;
   rollNo: string;
   studentId: number;
+  branchId?: number | null;
   onLogout?: () => void;
 }
 
-export default function StudentDashboard({ studentName, rollNo, studentId, onLogout }: StudentDashboardProps) {
+export default function StudentDashboard({ studentName, rollNo, studentId, branchId, onLogout }: StudentDashboardProps) {
+  const [showChangePasswordDialog, setShowChangePasswordDialog] = useState(false);
+  const [showNoticePopup, setShowNoticePopup] = useState(false);
+  const [latestPopupNotice, setLatestPopupNotice] = useState<any>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   // Fetch student's attendance - cached with studentId for instant loading
   const { data: attendanceData = [], isLoading: isLoadingAttendance } = useQuery<any[]>({
     queryKey: ['/api/attendance', studentId],
@@ -31,12 +45,12 @@ export default function StudentDashboard({ studentName, rollNo, studentId, onLog
 
   // Fetch subjects - cached globally for instant loading
   const { data: subjects = [], isLoading: isLoadingSubjects } = useQuery<any[]>({
-    queryKey: ['/api/subjects'],
+    queryKey: branchId ? [`/api/subjects?branchId=${branchId}`] : ['/api/subjects'],
   });
 
   // Fetch library books - cached globally for instant loading
   const { data: books = [] } = useQuery<any[]>({
-    queryKey: ['/api/library/books'],
+    queryKey: branchId ? [`/api/library/books?branchId=${branchId}`] : ['/api/library/books'],
   });
 
   // Fetch student's book issues - cached with studentId for instant loading
@@ -46,8 +60,22 @@ export default function StudentDashboard({ studentName, rollNo, studentId, onLog
 
   // Fetch notices - cached globally for instant loading
   const { data: notices = [] } = useQuery<any[]>({
-    queryKey: ['/api/notices'],
+    queryKey: branchId ? [`/api/notices?branchId=${branchId}`] : ['/api/notices'],
   });
+
+  useEffect(() => {
+    if (notices && notices.length > 0) {
+      // Assuming notices are sorted by date desc (which they are from backend)
+      const latest = notices[0];
+      const seenNoticeId = localStorage.getItem('lastSeenNoticeId');
+      
+      // If we haven't seen this notice yet (compare as numbers)
+      if (!seenNoticeId || parseInt(seenNoticeId) !== latest.id) {
+        setLatestPopupNotice(latest);
+        setShowNoticePopup(true);
+      }
+    }
+  }, [notices]);
 
   // Check if critical data is still loading
   const isLoading = isLoadingAttendance || isLoadingMarks || isLoadingSubjects;
@@ -179,8 +207,54 @@ export default function StudentDashboard({ studentName, rollNo, studentId, onLog
       };
     });
 
+  const handleCloseNoticePopup = () => {
+    if (latestPopupNotice) {
+      localStorage.setItem('lastSeenNoticeId', latestPopupNotice.id.toString());
+    }
+    setShowNoticePopup(false);
+  };
+
   return (
     <div className="min-h-screen bg-background">
+      {/* Notice Popup */}
+      <Dialog open={showNoticePopup} onOpenChange={(open) => !open && handleCloseNoticePopup()}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <div className="flex items-center gap-2">
+              <Bell className="h-5 w-5 text-primary" />
+              <DialogTitle>New Notice</DialogTitle>
+            </div>
+            <DialogDescription>
+              {latestPopupNotice ? new Date(latestPopupNotice.createdAt).toLocaleDateString() : ''}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {latestPopupNotice && (
+            <div className="py-4 space-y-4">
+              <div className="space-y-2">
+                <h3 className="font-semibold text-lg">{latestPopupNotice.title}</h3>
+                <p className="text-muted-foreground whitespace-pre-wrap">{latestPopupNotice.message}</p>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Priority:</span>
+                <Badge 
+                  variant={latestPopupNotice.priority === 'high' ? 'destructive' : latestPopupNotice.priority === 'normal' ? 'default' : 'secondary'}
+                >
+                  {latestPopupNotice.priority.toUpperCase()}
+                </Badge>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button onClick={handleCloseNoticePopup} className="w-full sm:w-auto">
+              Acknowledge
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <header className="sticky top-0 z-10 border-b bg-card px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
@@ -189,12 +263,27 @@ export default function StudentDashboard({ studentName, rollNo, studentId, onLog
               {studentName} ({rollNo})
             </p>
           </div>
-          <Button variant="ghost" onClick={onLogout} data-testid="button-logout">
-            <LogOut className="h-4 w-4 mr-2" />
-            Logout
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowChangePasswordDialog(true)}
+              className="hidden sm:flex"
+            >
+              <Key className="h-4 w-4 mr-2" />
+              Change Password
+            </Button>
+            <Button variant="ghost" onClick={onLogout} data-testid="button-logout">
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
+          </div>
         </div>
       </header>
+
+      <ChangePasswordDialog 
+        open={showChangePasswordDialog} 
+        onOpenChange={setShowChangePasswordDialog} 
+      />
 
       <main className="p-6">
         <Tabs defaultValue="dashboard" className="space-y-6">
@@ -242,10 +331,10 @@ export default function StudentDashboard({ studentName, rollNo, studentId, onLog
                     icon={Award}
                   />
                   <StatCard
-                    title="Books Issued"
-                    value={booksIssued.toString()}
-                    icon={BookOpen}
-                    description="Currently reading"
+                    title="Current Time"
+                    value={currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    icon={Clock}
+                    description={currentTime.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
                   />
                 </div>
 

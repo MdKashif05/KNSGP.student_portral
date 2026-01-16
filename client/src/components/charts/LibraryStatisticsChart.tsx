@@ -5,9 +5,12 @@ interface LibraryStatisticsChartProps {
   books: any[];
 }
 
-export default function LibraryStatisticsChart({ books }: LibraryStatisticsChartProps) {
-  const totalBooks = books.reduce((sum: number, book: any) => sum + (book.totalCopies || 0), 0);
-  const availableBooks = books.reduce((sum: number, book: any) => sum + (book.availableCopies || 0), 0);
+export default function LibraryStatisticsChart({ books = [] }: LibraryStatisticsChartProps) {
+  // Ensure books is an array
+  const safeBooks = Array.isArray(books) ? books : [];
+
+  const totalBooks = safeBooks.reduce((sum: number, book: any) => sum + (book.totalCopies || 0), 0);
+  const availableBooks = safeBooks.reduce((sum: number, book: any) => sum + (book.availableCopies || 0), 0);
   const issuedBooks = totalBooks - availableBooks;
 
   const data = [

@@ -6,10 +6,14 @@ interface SubjectPerformanceChartProps {
   subjects: any[];
 }
 
-export default function SubjectPerformanceChart({ marks, subjects }: SubjectPerformanceChartProps) {
+export default function SubjectPerformanceChart({ marks = [], subjects = [] }: SubjectPerformanceChartProps) {
+  // Ensure inputs are arrays
+  const safeMarks = Array.isArray(marks) ? marks : [];
+  const safeSubjects = Array.isArray(subjects) ? subjects : [];
+
   // Calculate average marks per subject
-  const subjectPerformance = subjects.map((subject: any) => {
-    const subjectMarks = marks.filter((mark: any) => mark.subjectId === subject.id);
+  const subjectPerformance = safeSubjects.map((subject: any) => {
+    const subjectMarks = safeMarks.filter((mark: any) => mark.subjectId === subject.id);
     const avgPercentage = subjectMarks.length > 0
       ? subjectMarks.reduce((sum: number, mark: any) => sum + (mark.percentage || 0), 0) / subjectMarks.length
       : 0;

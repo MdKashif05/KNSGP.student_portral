@@ -9,6 +9,8 @@ import {
   bookIssues,
   notices,
   auditLogs,
+  batches,
+  branches,
   type Student,
   type Admin,
   type Subject,
@@ -26,14 +28,24 @@ import {
   type InsertLibraryBook,
   type InsertBookIssue,
   type InsertNotice,
-  type InsertAuditLog
+  type InsertAuditLog,
+  type Batch,
+  type InsertBatch,
+  type Branch,
+  type InsertBranch
 } from "@shared/schema";
-import { eq, and, desc, asc } from "drizzle-orm";
+import { eq, and, desc, asc, sql, inArray, ilike, or, isNull } from "drizzle-orm";
 
 export interface IStorage {
+  getStudentStats(studentIds?: number[]): Promise<{
+    attendanceStats: { studentId: number; avgPercentage: number }[];
+    marksStats: { studentId: number; avgPercentage: number }[];
+    issueStats: { studentId: number; count: number }[];
+  }>;
   // Students
   getStudentByRollNo(rollNo: string): Promise<Student | undefined>;
-  getAllStudents(): Promise<Student[]>;
+  getAllStudents(limit?: number, offset?: number, department?: string): Promise<{ data: Student[], total: number }>;
+  getStudentsByIds(ids: number[]): Promise<Student[]>;
   createStudent(student: InsertStudent): Promise<Student>;
   updateStudent(id: number, student: Partial<InsertStudent>): Promise<Student | undefined>;
   deleteStudent(id: number): Promise<boolean>;
@@ -49,9 +61,10 @@ export interface IStorage {
 
   // Audit Logs
   createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
+  getAllAuditLogs(): Promise<AuditLog[]>;
 
   // Subjects
-  getAllSubjects(): Promise<Subject[]>;
+  getAllSubjects(department?: string): Promise<Subject[]>;
   getSubjectById(id: number): Promise<Subject | undefined>;
   createSubject(subject: InsertSubject): Promise<Subject>;
   updateSubject(id: number, subject: Partial<InsertSubject>): Promise<Subject | undefined>;
@@ -59,7 +72,7 @@ export interface IStorage {
 
   // Attendance
   getAttendanceByStudent(studentId: number): Promise<Attendance[]>;
-  getAllAttendance(): Promise<Attendance[]>;
+  getAllAttendance(limit?: number, offset?: number, search?: string, department?: string): Promise<{ data: (Attendance & { student: Student })[], total: number }>;
   createAttendance(attendanceRecord: InsertAttendance): Promise<Attendance>;
   createAttendanceBatch(attendanceRecords: (InsertAttendance & { percentage: number; status: string })[]): Promise<Attendance[]>;
   updateAttendance(id: number, attendanceRecord: Partial<InsertAttendance>): Promise<Attendance | undefined>;
@@ -67,7 +80,7 @@ export interface IStorage {
 
   // Marks
   getMarksByStudent(studentId: number): Promise<Marks[]>;
-  getAllMarks(): Promise<Marks[]>;
+  getAllMarks(limit?: number, offset?: number, search?: string, department?: string): Promise<{ data: (Marks & { student: Student })[], total: number }>;
   createMarks(marksRecord: InsertMarks): Promise<Marks>;
   createMarksBatch(marksRecords: (InsertMarks & { percentage: number; grade: string })[]): Promise<Marks[]>;
   updateMarks(id: number, marksRecord: Partial<InsertMarks>): Promise<Marks | undefined>;
@@ -93,17 +106,108 @@ export interface IStorage {
   createNotice(notice: InsertNotice): Promise<Notice>;
   updateNotice(id: number, notice: Partial<InsertNotice>): Promise<Notice | undefined>;
   deleteNotice(id: number): Promise<boolean>;
+
+  // Analytics
+  getGlobalStats(branchId?: number): Promise<{
+    totalStudents: number;
+    avgAttendance: number;
+    avgMarks: number;
+    totalBooksIssued: number;
+  }>;
+
+  // Batches
+  getAllBatches(): Promise<Batch[]>;
+  getBatchById(id: number): Promise<Batch | undefined>;
+  createBatch(batch: InsertBatch): Promise<Batch>;
+  updateBatch(id: number, batch: Partial<InsertBatch>): Promise<Batch | undefined>;
+  deleteBatch(id: number): Promise<boolean>;
+
+  // Branches
+  getBranchesByBatch(batchId: number): Promise<Branch[]>;
+  getBranchById(id: number): Promise<Branch | undefined>;
+  createBranch(branch: InsertBranch): Promise<Branch>;
+  updateBranch(id: number, branch: Partial<InsertBranch>): Promise<Branch | undefined>;
+  deleteBranch(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
   // Students
+  async getStudentStats(studentIds?: number[]) {
+    const attendanceQuery = db.select({
+      studentId: attendance.studentId,
+      avgPercentage: sql<number>`avg(${attendance.percentage})`
+    })
+    .from(attendance)
+    .groupBy(attendance.studentId);
+    
+    if (studentIds && studentIds.length > 0) {
+      attendanceQuery.where(inArray(attendance.studentId, studentIds));
+    }
+    
+    const attendanceStats = await attendanceQuery;
+
+    const marksQuery = db.select({
+      studentId: marks.studentId,
+      avgPercentage: sql<number>`avg(${marks.percentage})`
+    })
+    .from(marks)
+    .groupBy(marks.studentId);
+    
+    if (studentIds && studentIds.length > 0) {
+      marksQuery.where(inArray(marks.studentId, studentIds));
+    }
+    
+    const marksStats = await marksQuery;
+
+    const issueQuery = db.select({
+      studentId: bookIssues.studentId,
+      count: sql<number>`count(*)`
+    })
+    .from(bookIssues)
+    .groupBy(bookIssues.studentId);
+    
+    if (studentIds && studentIds.length > 0) {
+      issueQuery.where(and(eq(bookIssues.status, 'issued'), inArray(bookIssues.studentId, studentIds)));
+    } else {
+      issueQuery.where(eq(bookIssues.status, 'issued'));
+    }
+
+    const issueStats = await issueQuery;
+
+    return { attendanceStats, marksStats, issueStats };
+  }
+
   async getStudentByRollNo(rollNo: string): Promise<Student | undefined> {
     const result = await db.select().from(students).where(eq(students.rollNo, rollNo));
     return result[0];
   }
 
-  async getAllStudents(): Promise<Student[]> {
-    return await db.select().from(students).orderBy(asc(students.id));
+  async getAllStudents(limit?: number, offset?: number, department?: string, branchId?: number): Promise<{ data: Student[], total: number }> {
+    const query = db.select().from(students).orderBy(asc(students.rollNo));
+    if (branchId) {
+      query.where(eq(students.branchId, branchId));
+    } else if (department) {
+      // Fallback for backward compatibility if needed, or remove if strictly branchId
+      query.where(eq(students.department, department));
+    }
+    
+    if (limit !== undefined && offset !== undefined) {
+      query.limit(limit).offset(offset);
+    }
+    const data = await query;
+    const totalQuery = db.select({ count: sql<number>`count(*)` }).from(students);
+    if (branchId) {
+      totalQuery.where(eq(students.branchId, branchId));
+    } else if (department) {
+      totalQuery.where(eq(students.department, department));
+    }
+    const totalResult = await totalQuery;
+    return { data, total: Number(totalResult[0].count) };
+  }
+
+  async getStudentsByIds(ids: number[]): Promise<Student[]> {
+    if (ids.length === 0) return [];
+    return await db.select().from(students).where(inArray(students.id, ids));
   }
 
   async createStudent(student: InsertStudent): Promise<Student> {
@@ -117,8 +221,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteStudent(id: number): Promise<boolean> {
-    const result = await db.delete(students).where(eq(students.id, id)).returning();
-    return result.length > 0;
+    return await db.transaction(async (tx) => {
+      // 1. Log the deletion
+      const [student] = await tx.select().from(students).where(eq(students.id, id));
+      await tx.insert(auditLogs).values({
+        action: "DELETE_STUDENT",
+        details: `Deleted student: ${student?.name} (ID: ${id}, RollNo: ${student?.rollNo})`,
+        ipAddress: "SYSTEM"
+      });
+
+      // 2. Delete the student (Cascading will handle related records automatically)
+      const result = await tx.delete(students).where(eq(students.id, id)).returning();
+      return result.length > 0;
+    });
   }
 
   // Admins
@@ -152,6 +267,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteAdmin(id: number): Promise<boolean> {
+    // First remove the reference in audit logs to allow deletion
+    await db.update(auditLogs).set({ adminId: null }).where(eq(auditLogs.adminId, id));
+    
     const result = await db.delete(admins).where(eq(admins.id, id)).returning();
     return result.length > 0;
   }
@@ -162,9 +280,19 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
+  async getAllAuditLogs(): Promise<AuditLog[]> {
+    return await db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt));
+  }
+
   // Subjects
-  async getAllSubjects(): Promise<Subject[]> {
-    return await db.select().from(subjects).orderBy(asc(subjects.id));
+  async getAllSubjects(department?: string, branchId?: number): Promise<Subject[]> {
+    const query = db.select().from(subjects).orderBy(asc(subjects.id));
+    if (branchId) {
+      query.where(eq(subjects.branchId, branchId));
+    } else if (department) {
+      query.where(eq(subjects.department, department));
+    }
+    return await query;
   }
 
   async getSubjectById(id: number): Promise<Subject | undefined> {
@@ -192,8 +320,63 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(attendance).where(eq(attendance.studentId, studentId)).orderBy(desc(attendance.month));
   }
 
-  async getAllAttendance(): Promise<Attendance[]> {
-    return await db.select().from(attendance).orderBy(desc(attendance.month), asc(attendance.studentId), asc(attendance.id));
+  async getAllAttendance(limit?: number, offset?: number, search?: string, department?: string, branchId?: number): Promise<{ data: (Attendance & { student: Student })[], total: number }> {
+    let query = db.select()
+    .from(attendance)
+    .innerJoin(students, eq(attendance.studentId, students.id))
+    .orderBy(asc(students.rollNo), desc(attendance.month));
+
+    if (search) {
+      const searchLower = `%${search.toLowerCase()}%`;
+      query.where(
+        or(
+          ilike(students.name, searchLower),
+          ilike(students.rollNo, searchLower),
+          ilike(attendance.month, searchLower)
+        )
+      );
+    }
+    if (branchId) {
+      query.where(eq(students.branchId, branchId));
+    } else if (department) {
+      query.where(eq(students.department, department));
+    }
+
+    if (limit !== undefined && offset !== undefined) {
+      query.limit(limit).offset(offset);
+    }
+    
+    // Execute query and map result to expected format
+    const results = await query;
+    const data = results.map(row => ({
+      ...row.attendance,
+      student: row.students
+    }));
+    
+    // Count query for pagination
+    const countQuery = db.select({ count: sql<number>`count(*)` })
+      .from(attendance)
+      .innerJoin(students, eq(attendance.studentId, students.id));
+
+    if (search) {
+      const searchLower = `%${search.toLowerCase()}%`;
+      countQuery.where(
+        or(
+          ilike(students.name, searchLower),
+          ilike(students.rollNo, searchLower),
+          ilike(attendance.month, searchLower)
+        )
+      );
+    }
+    if (branchId) {
+      countQuery.where(eq(students.branchId, branchId));
+    } else if (department) {
+      countQuery.where(eq(students.department, department));
+    }
+    
+    const totalResult = await countQuery;
+    
+    return { data: data as any, total: Number(totalResult[0].count) };
   }
 
   async createAttendance(attendanceRecord: any): Promise<Attendance> {
@@ -227,8 +410,62 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(marks).where(eq(marks.studentId, studentId));
   }
 
-  async getAllMarks(): Promise<Marks[]> {
-    return await db.select().from(marks).orderBy(asc(marks.studentId), asc(marks.subjectId), asc(marks.id));
+  async getAllMarks(limit?: number, offset?: number, search?: string, department?: string, branchId?: number): Promise<{ data: (Marks & { student: Student })[], total: number }> {
+    let query = db.select()
+    .from(marks)
+    .innerJoin(students, eq(marks.studentId, students.id))
+    .orderBy(asc(students.rollNo), desc(marks.month));
+
+    if (search) {
+      const searchLower = `%${search.toLowerCase()}%`;
+      query.where(
+        or(
+          ilike(students.name, searchLower),
+          ilike(students.rollNo, searchLower),
+          ilike(marks.testName, searchLower)
+        )
+      );
+    }
+    if (branchId) {
+      query.where(eq(students.branchId, branchId));
+    } else if (department) {
+      query.where(eq(students.department, department));
+    }
+
+    if (limit !== undefined && offset !== undefined) {
+      query.limit(limit).offset(offset);
+    }
+    
+    // Execute query and map result to expected format
+    const results = await query;
+    const data = results.map(row => ({
+      ...row.marks,
+      student: row.students
+    }));
+    
+    // Count query for pagination
+    const countQuery = db.select({ count: sql<number>`count(*)` })
+      .from(marks)
+      .innerJoin(students, eq(marks.studentId, students.id));
+      
+    if (search) {
+      const searchLower = `%${search.toLowerCase()}%`;
+      countQuery.where(
+        or(
+          ilike(students.name, searchLower),
+          ilike(students.rollNo, searchLower),
+          ilike(marks.testName, searchLower)
+        )
+      );
+    }
+    if (branchId) {
+      countQuery.where(eq(students.branchId, branchId));
+    } else if (department) {
+      countQuery.where(eq(students.department, department));
+    }
+    
+    const totalResult = await countQuery;
+    return { data: data as any, total: Number(totalResult[0].count) };
   }
 
   async createMarks(marksRecord: any): Promise<Marks> {
@@ -258,8 +495,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Library Books
-  async getAllLibraryBooks(): Promise<LibraryBook[]> {
-    return await db.select().from(libraryBooks).orderBy(asc(libraryBooks.id));
+  async getAllLibraryBooks(branchId?: number): Promise<LibraryBook[]> {
+    const query = db.select().from(libraryBooks).orderBy(asc(libraryBooks.id));
+    if (branchId) {
+      // Show books specific to the branch ONLY (User requested strict separation)
+      query.where(eq(libraryBooks.branchId, branchId));
+    }
+    return await query;
   }
 
   async getLibraryBookById(id: number): Promise<LibraryBook | undefined> {
@@ -382,8 +624,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Notices
-  async getAllNotices(): Promise<Notice[]> {
-    return await db.select().from(notices).orderBy(desc(notices.createdAt));
+  async getAllNotices(branchId?: number): Promise<any[]> {
+    const query = db.select({
+      id: notices.id,
+      title: notices.title,
+      message: notices.message,
+      priority: notices.priority,
+      branchId: notices.branchId,
+      createdAt: notices.createdAt,
+      branchName: branches.name
+    })
+    .from(notices)
+    .leftJoin(branches, eq(notices.branchId, branches.id))
+    .orderBy(desc(notices.createdAt));
+    
+    if (branchId) {
+      // If a branchId is provided, ONLY return notices for that branch.
+      // Do NOT include global notices (where branchId is null).
+      query.where(eq(notices.branchId, branchId));
+    }
+    return await query;
   }
 
   async getNoticeById(id: number): Promise<Notice | undefined> {
@@ -404,6 +664,174 @@ export class DatabaseStorage implements IStorage {
   async deleteNotice(id: number): Promise<boolean> {
     const result = await db.delete(notices).where(eq(notices.id, id)).returning();
     return result.length > 0;
+  }
+
+  // Analytics
+  async getGlobalStats(branchId?: number) {
+    // 1. Students count
+    const studentCountQuery = db.select({ count: sql<number>`count(*)` }).from(students);
+    if (branchId) {
+      studentCountQuery.where(eq(students.branchId, branchId));
+    }
+    const [studentCount] = await studentCountQuery;
+
+    // 2. Attendance Average
+    const attendanceAvgQuery = db.select({ avg: sql<number>`avg(${attendance.percentage})` }).from(attendance);
+    if (branchId) {
+      attendanceAvgQuery.innerJoin(students, eq(attendance.studentId, students.id))
+        .where(eq(students.branchId, branchId));
+    }
+    const [attendanceAvg] = await attendanceAvgQuery;
+
+    // 3. Marks Average
+    const marksAvgQuery = db.select({ avg: sql<number>`avg(${marks.percentage})` }).from(marks);
+    if (branchId) {
+      marksAvgQuery.innerJoin(students, eq(marks.studentId, students.id))
+        .where(eq(students.branchId, branchId));
+    }
+    const [marksAvg] = await marksAvgQuery;
+
+    // 4. Books Issued Count
+    const issuedCountQuery = db.select({ count: sql<number>`count(*)` }).from(bookIssues);
+    if (branchId) {
+      issuedCountQuery.innerJoin(students, eq(bookIssues.studentId, students.id))
+        .where(and(eq(bookIssues.status, 'issued'), eq(students.branchId, branchId)));
+    } else {
+      issuedCountQuery.where(eq(bookIssues.status, 'issued'));
+    }
+    const [issuedCount] = await issuedCountQuery;
+
+    return {
+      totalStudents: Number(studentCount?.count || 0),
+      avgAttendance: Number(attendanceAvg?.avg || 0),
+      avgMarks: Number(marksAvg?.avg || 0),
+      totalBooksIssued: Number(issuedCount?.count || 0)
+    };
+  }
+
+  async getAllBatches(): Promise<Batch[]> {
+    return await db.select().from(batches).orderBy(asc(batches.startYear));
+  }
+
+  async getBatchById(id: number): Promise<Batch | undefined> {
+    const result = await db.select().from(batches).where(eq(batches.id, id));
+    return result[0];
+  }
+
+  async createBatch(batch: InsertBatch): Promise<Batch> {
+    const result = await db.insert(batches).values(batch).returning();
+    return result[0];
+  }
+
+  async updateBatch(id: number, batch: Partial<InsertBatch>): Promise<Batch | undefined> {
+    const result = await db.update(batches).set(batch).where(eq(batches.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteBatch(id: number): Promise<boolean> {
+    console.log(`[Storage] Deleting batch ${id}...`);
+    return await db.transaction(async (tx) => {
+      // 1. Get all branches in this batch
+      const batchBranches = await tx.select().from(branches).where(eq(branches.batchId, id));
+      console.log(`[Storage] Found ${batchBranches.length} branches in batch ${id}`);
+      
+      for (const branch of batchBranches) {
+        await this.deleteBranchData(tx, branch.id);
+      }
+
+      // 2. Delete the branches (now safe to delete)
+      await tx.delete(branches).where(eq(branches.batchId, id));
+      console.log(`[Storage] Deleted branches for batch ${id}`);
+
+      // 3. Delete the batch itself
+      const result = await tx.delete(batches).where(eq(batches.id, id)).returning();
+      console.log(`[Storage] Deleted batch ${id}, result:`, result.length);
+      return result.length > 0;
+    });
+  }
+
+  // Helper to delete all data associated with a branch (Manual Cascade)
+  private async deleteBranchData(tx: any, branchId: number) {
+    console.log(`[Storage] Cleaning up data for branch ${branchId}...`);
+    
+    // Get IDs for cleanup
+    const branchStudents = await tx.select({ id: students.id }).from(students).where(eq(students.branchId, branchId));
+    const studentIds = branchStudents.map((s: any) => s.id);
+
+    const branchSubjects = await tx.select({ id: subjects.id }).from(subjects).where(eq(subjects.branchId, branchId));
+    const subjectIds = branchSubjects.map((s: any) => s.id);
+
+    const branchBooks = await tx.select({ id: libraryBooks.id }).from(libraryBooks).where(eq(libraryBooks.branchId, branchId));
+    const bookIds = branchBooks.map((b: any) => b.id);
+
+    console.log(`[Storage] Found ${studentIds.length} students, ${subjectIds.length} subjects, ${bookIds.length} books for branch ${branchId}`);
+
+    // 1. Delete Book Issues
+    if (studentIds.length > 0) {
+      await tx.delete(bookIssues).where(inArray(bookIssues.studentId, studentIds));
+    }
+    if (bookIds.length > 0) {
+      await tx.delete(bookIssues).where(inArray(bookIssues.bookId, bookIds));
+    }
+
+    // 2. Delete Attendance
+    if (studentIds.length > 0) {
+      await tx.delete(attendance).where(inArray(attendance.studentId, studentIds));
+    }
+    if (subjectIds.length > 0) {
+      await tx.delete(attendance).where(inArray(attendance.subjectId, subjectIds));
+    }
+
+    // 3. Delete Marks
+    if (studentIds.length > 0) {
+      await tx.delete(marks).where(inArray(marks.studentId, studentIds));
+    }
+    if (subjectIds.length > 0) {
+      await tx.delete(marks).where(inArray(marks.subjectId, subjectIds));
+    }
+
+    // 4. Delete dependent Notices
+    await tx.delete(notices).where(eq(notices.branchId, branchId));
+
+    // 5. Delete dependent Students
+    await tx.delete(students).where(eq(students.branchId, branchId));
+
+    // 6. Delete dependent Subjects
+    await tx.delete(subjects).where(eq(subjects.branchId, branchId));
+
+    // 7. Delete dependent Library Books
+    await tx.delete(libraryBooks).where(eq(libraryBooks.branchId, branchId));
+    
+    console.log(`[Storage] Cleanup complete for branch ${branchId}`);
+  }
+
+  async getBranchesByBatch(batchId: number): Promise<Branch[]> {
+    return await db.select().from(branches).where(eq(branches.batchId, batchId)).orderBy(asc(branches.name));
+  }
+
+  async getBranchById(id: number): Promise<Branch | undefined> {
+    const result = await db.select().from(branches).where(eq(branches.id, id));
+    return result[0];
+  }
+
+  async createBranch(branch: InsertBranch): Promise<Branch> {
+    const result = await db.insert(branches).values(branch).returning();
+    return result[0];
+  }
+
+  async updateBranch(id: number, branch: Partial<InsertBranch>): Promise<Branch | undefined> {
+    const result = await db.update(branches).set(branch).where(eq(branches.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteBranch(id: number): Promise<boolean> {
+    console.log(`[Storage] Deleting branch ${id}...`);
+    return await db.transaction(async (tx) => {
+      await this.deleteBranchData(tx, id);
+      const result = await tx.delete(branches).where(eq(branches.id, id)).returning();
+      console.log(`[Storage] Deleted branch ${id}, result:`, result.length);
+      return result.length > 0;
+    });
   }
 }
 

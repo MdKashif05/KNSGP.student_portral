@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, timestamp, date, serial, real } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, timestamp, date, serial, real, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -9,14 +9,28 @@ export const students = pgTable("students", {
   rollNo: varchar("roll_no", { length: 50 }).notNull().unique(),
   name: text("name").notNull(),
   password: text("password").notNull(),
+  securityQuestion: text("security_question"),
+  securityAnswer: text("security_answer"),
   failedLoginAttempts: integer("failed_login_attempts").default(0),
   lockoutUntil: timestamp("lockout_until"),
+  department: varchar("department", { length: 50 }).default('CSE'),
+  branchId: integer("branch_id").references(() => branches.id),
+  semester: integer("semester").default(1),
   createdAt: timestamp("created_at").defaultNow(),
+}, (table) => {
+  return {
+    deptIdx: index("student_dept_idx").on(table.department),
+    semIdx: index("student_sem_idx").on(table.semester),
+  };
 });
 
 export const insertStudentSchema = createInsertSchema(students).omit({
   id: true,
   createdAt: true,
+}).extend({
+  department: z.string().min(1, "Department is required"),
+  branchId: z.number().optional(),
+  semester: z.number().min(1).max(6),
 });
 
 export type InsertStudent = z.infer<typeof insertStudentSchema>;
@@ -72,12 +86,19 @@ export const subjects = pgTable("subjects", {
   name: text("name").notNull(),
   instructor: text("instructor"),
   totalMarks: integer("total_marks").notNull().default(20),
+  department: varchar("department", { length: 50 }).default('CSE'),
+  branchId: integer("branch_id").references(() => branches.id),
+  semester: integer("semester").default(1),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const insertSubjectSchema = createInsertSchema(subjects).omit({
   id: true,
   createdAt: true,
+}).extend({
+  department: z.string().min(1, "Department is required"),
+  branchId: z.number().optional(),
+  semester: z.number().min(1).max(6),
 });
 
 export type InsertSubject = z.infer<typeof insertSubjectSchema>;
@@ -94,6 +115,12 @@ export const attendance = pgTable("attendance", {
   percentage: real("percentage").notNull(),
   status: varchar("status", { length: 20 }).notNull(), // 'Good' (≥80%), 'Average' (60-79%), 'Poor' (<60%)
   createdAt: timestamp("created_at").defaultNow(),
+}, (table) => {
+  return {
+    studentIdx: index("attendance_student_idx").on(table.studentId),
+    subjectIdx: index("attendance_subject_idx").on(table.subjectId),
+    monthIdx: index("attendance_month_idx").on(table.month),
+  };
 });
 
 export const insertAttendanceSchema = createInsertSchema(attendance).omit({
@@ -120,6 +147,12 @@ export const marks = pgTable("marks", {
   percentage: real("percentage").notNull(),
   grade: varchar("grade", { length: 5 }).notNull(), // A+, A, B+, B, C, D, F
   createdAt: timestamp("created_at").defaultNow(),
+}, (table) => {
+  return {
+    studentIdx: index("marks_student_idx").on(table.studentId),
+    subjectIdx: index("marks_subject_idx").on(table.subjectId),
+    monthIdx: index("marks_month_idx").on(table.month),
+  };
 });
 
 export const insertMarksSchema = createInsertSchema(marks).omit({
@@ -141,12 +174,15 @@ export const libraryBooks = pgTable("library_books", {
   author: text("author").notNull(),
   copiesAvailable: integer("copies_available").notNull().default(0),
   totalCopies: integer("total_copies").notNull().default(0),
+  branchId: integer("branch_id").references(() => branches.id),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const insertLibraryBookSchema = createInsertSchema(libraryBooks).omit({
   id: true,
   createdAt: true,
+}).extend({
+  branchId: z.number().optional(),
 });
 
 export type InsertLibraryBook = z.infer<typeof insertLibraryBookSchema>;
@@ -178,13 +214,52 @@ export const notices = pgTable("notices", {
   title: text("title").notNull(),
   message: text("message").notNull(),
   priority: varchar("priority", { length: 20 }).notNull().default('normal'), // 'high', 'normal', 'low'
+  branchId: integer("branch_id").references(() => branches.id),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const insertNoticeSchema = createInsertSchema(notices).omit({
   id: true,
   createdAt: true,
+}).extend({
+  branchId: z.number().optional(),
 });
 
 export type InsertNotice = z.infer<typeof insertNoticeSchema>;
 export type Notice = typeof notices.$inferSelect;
+
+export const batches = pgTable("batches", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 50 }).notNull().unique(),
+  startYear: integer("start_year").notNull(),
+  endYear: integer("end_year").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertBatchSchema = z.object({
+  name: z.string().min(1, "Batch name is required"),
+  startYear: z.number().int().min(2000, "Invalid start year"),
+  endYear: z.number().int().min(2000, "Invalid end year"),
+});
+
+export type InsertBatch = z.infer<typeof insertBatchSchema>;
+export type Batch = typeof batches.$inferSelect;
+
+export const branches = pgTable("branches", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  batchId: integer("batch_id").notNull().references(() => batches.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => {
+  return {
+    batchIdx: index("branch_batch_idx").on(table.batchId),
+  };
+});
+
+export const insertBranchSchema = createInsertSchema(branches).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertBranch = z.infer<typeof insertBranchSchema>;
+export type Branch = typeof branches.$inferSelect;

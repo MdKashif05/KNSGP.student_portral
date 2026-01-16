@@ -8,34 +8,71 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, AlertCircle, CheckCircle } from "lucide-react";
+import { Loader2, AlertCircle, CheckCircle, Calendar } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { normalizeMonthInput } from "@/lib/utils";
 
 interface BatchMarksDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
+  branchId?: number;
 }
 
-export default function BatchMarksDialog({ open, onOpenChange, onSuccess }: BatchMarksDialogProps) {
+export default function BatchMarksDialog({ open, onOpenChange, onSuccess, branchId: initialBranchId }: BatchMarksDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [step, setStep] = useState<'input' | 'confirm'>('input');
+  
+  // Filtering state
   const [selectedStudent, setSelectedStudent] = useState<string>("");
+  const [studentSearch, setStudentSearch] = useState("");
   const [month, setMonth] = useState<string>("");
   const [testName, setTestName] = useState<string>("");
   const [marksData, setMarksData] = useState<Record<string, { obtained: string, total: string }>>({});
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [previewRecords, setPreviewRecords] = useState<any[]>([]);
 
-  const { data: students = [] } = useQuery<any[]>({ queryKey: ['/api/students'] });
-  const { data: subjects = [] } = useQuery<any[]>({ queryKey: ['/api/subjects'] });
+  // Fetch Students
+  // Use initialBranchId if available. If not, we fetch all (limit 1000).
+  const { data: studentsResponse } = useQuery<any>({ 
+    queryKey: [`/api/students?limit=1000${initialBranchId ? `&branchId=${initialBranchId}` : ''}`],
+    enabled: open
+  });
+  const studentsRaw = studentsResponse?.data;
+  const students = Array.isArray(studentsRaw) ? studentsRaw : [];
+  
+  const filteredStudents = students.filter((s: any) => 
+    s.name.toLowerCase().includes(studentSearch.toLowerCase()) || 
+    s.rollNo.toLowerCase().includes(studentSearch.toLowerCase())
+  ).slice(0, 50);
+
+  // Determine active branch for subjects
+  // 1. initialBranchId (passed from parent)
+  // 2. OR branchId of the selected student
+  const selectedStudentObj = students.find((s: any) => s.id.toString() === selectedStudent);
+  const activeBranchId = initialBranchId || selectedStudentObj?.branchId;
+
+  // Fetch Subjects (filtered by active branch)
+  const { data: subjectsRaw = [] } = useQuery<any[]>({ 
+    queryKey: [`/api/subjects${activeBranchId ? `?branchId=${activeBranchId}` : ''}`],
+    enabled: open && !!activeBranchId // Only fetch if we have a branch context (either from prop or selected student)
+  });
+  const subjects = Array.isArray(subjectsRaw) ? subjectsRaw : [];
 
   useEffect(() => {
     if (open) {
       setStep('input');
       setValidationErrors([]);
       setPreviewRecords([]);
+      // Don't reset filters to allow continuous entry
+    }
+  }, [open]);
+
+  // Reset student when not in open
+  useEffect(() => {
+    if (!open) {
+       setSelectedStudent("");
     }
   }, [open]);
 
@@ -87,6 +124,7 @@ export default function BatchMarksDialog({ open, onOpenChange, onSuccess }: Batc
       setMarksData(resetData);
       setValidationErrors([]);
       setPreviewRecords([]);
+      // We keep batch/branch selected for convenience
     }, 300);
   };
 
@@ -97,6 +135,8 @@ export default function BatchMarksDialog({ open, onOpenChange, onSuccess }: Batc
       setValidationErrors(["Please fill in all required fields (Student, Month, Test Name)"]);
       return;
     }
+
+    const normalizedMonth = normalizeMonthInput(month);
 
     const errors: string[] = [];
     const records: any[] = [];
@@ -143,7 +183,7 @@ export default function BatchMarksDialog({ open, onOpenChange, onSuccess }: Batc
           studentId: parseInt(selectedStudent),
           subjectId: subject.id,
           subjectName: subject.name,
-          month,
+          month: normalizedMonth,
           testName,
           marksObtained: obtained,
           totalMarks: total,
@@ -174,31 +214,37 @@ export default function BatchMarksDialog({ open, onOpenChange, onSuccess }: Batc
   };
 
   const getStudentName = () => {
-    const student = students.find(s => s.id.toString() === selectedStudent);
+    const student = students.find((s: any) => s.id.toString() === selectedStudent);
     return student ? `${student.name} (${student.rollNo})` : "";
   };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-4xl max-h-[95vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>
             {step === 'input' ? "Batch Marks Entry" : "Confirm Marks Entry"}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto py-4">
-          {step === 'input' ? (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {step === 'input' && (
+          <div className="space-y-4 pt-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="student">Student</Label>
                 <div className="space-y-2">
-                  <Label htmlFor="student">Student</Label>
+                  <Input
+                    placeholder="Search student..."
+                    value={studentSearch}
+                    onChange={(e) => setStudentSearch(e.target.value)}
+                    className="mb-2"
+                  />
                   <Select value={selectedStudent} onValueChange={setSelectedStudent}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select Student" />
                     </SelectTrigger>
-                    <SelectContent>
-                      {students.map((student) => (
+                    <SelectContent className="max-h-64 overflow-y-auto">
+                      {filteredStudents.map((student: any) => (
                         <SelectItem key={student.id} value={student.id.toString()}>
                           {student.name} ({student.rollNo})
                         </SelectItem>
@@ -206,81 +252,104 @@ export default function BatchMarksDialog({ open, onOpenChange, onSuccess }: Batc
                     </SelectContent>
                   </Select>
                 </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="month">Month</Label>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="month">Month</Label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                   <Input
                     id="month"
                     type="month"
                     value={month}
-                    onChange={(e) => setMonth(e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="testName">Test Name</Label>
-                  <Input 
-                    id="testName" 
-                    value={testName} 
-                    onChange={(e) => setTestName(e.target.value)}
-                    placeholder="e.g. Mid Term"
+                    onChange={(e) => setMonth(normalizeMonthInput(e.target.value))}
+                    className="pl-10"
                   />
                 </div>
               </div>
 
-              {validationErrors.length > 0 && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Validation Error</AlertTitle>
-                  <AlertDescription>
-                    <ul className="list-disc pl-5 text-sm">
-                      {validationErrors.map((err, idx) => (
-                        <li key={idx}>{err}</li>
-                      ))}
-                    </ul>
-                  </AlertDescription>
-                </Alert>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="testName">Test Name</Label>
+                <Input 
+                  id="testName" 
+                  value={testName} 
+                  onChange={(e) => setTestName(e.target.value)}
+                  placeholder="e.g. Mid Term"
+                />
+              </div>
+            </div>
 
+            {validationErrors.length > 0 && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Validation Error</AlertTitle>
+                <AlertDescription>
+                  <ul className="list-disc pl-5 text-sm">
+                    {validationErrors.map((err, idx) => (
+                      <li key={idx}>{err}</li>
+                    ))}
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+        )}
+
+        <div className="flex-1 overflow-y-auto py-4">
+          {step === 'input' ? (
+            <div className="space-y-4">
               <div className="border rounded-md p-4 bg-slate-50 dark:bg-slate-900">
-                <h3 className="font-medium mb-4">Enter Marks for Subjects</h3>
-                <div className="grid grid-cols-1 gap-4">
-                  {subjects.map((subject) => (
-                    <div key={subject.id} className="grid grid-cols-12 gap-2 items-center">
-                      <Label className="col-span-6 truncate" title={subject.name}>{subject.name}</Label>
-                      <div className="col-span-3">
-                        <Input
-                          type="number"
-                          min="0"
-                          placeholder="Obtained"
-                          value={marksData[subject.id]?.obtained || ""}
-                          onChange={(e) => setMarksData({
-                            ...marksData,
-                            [subject.id]: { 
-                              ...marksData[subject.id], 
-                              obtained: e.target.value 
-                            }
-                          })}
-                        />
+                <h3 className="font-medium mb-4">Enter Marks for Subjects {activeBranchId && "(Filtered by Branch)"}</h3>
+                {subjects.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                     {!selectedStudent ? "Please select a student to see subjects." : "No subjects found for this student's branch."}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-6">
+                    {subjects.map((subject) => (
+                      <div key={subject.id} className="border-b pb-4 last:border-0 last:pb-0">
+                         <div className="mb-2">
+                            <Label className="text-base font-semibold" title={subject.name}>{subject.name}</Label>
+                            <p className="text-xs text-muted-foreground">{subject.code}</p>
+                         </div>
+                         <div className="flex gap-4">
+                            <div className="flex-1">
+                                <Label className="text-xs text-muted-foreground mb-1 block">Obtained</Label>
+                                <Input
+                                type="number"
+                                min="0"
+                                placeholder="Obtained"
+                                value={marksData[subject.id]?.obtained || ""}
+                                onChange={(e) => setMarksData({
+                                    ...marksData,
+                                    [subject.id]: { 
+                                    ...marksData[subject.id], 
+                                    obtained: e.target.value 
+                                    }
+                                })}
+                                />
+                            </div>
+                            <div className="flex-1">
+                                <Label className="text-xs text-muted-foreground mb-1 block">Total</Label>
+                                <Input
+                                type="number"
+                                min="0"
+                                placeholder="Total"
+                                value={marksData[subject.id]?.total || ""}
+                                onChange={(e) => setMarksData({
+                                    ...marksData,
+                                    [subject.id]: { 
+                                    ...marksData[subject.id], 
+                                    total: e.target.value 
+                                    }
+                                })}
+                                />
+                            </div>
+                         </div>
                       </div>
-                      <div className="col-span-3">
-                        <Input
-                          type="number"
-                          min="0"
-                          placeholder="Total"
-                          value={marksData[subject.id]?.total || ""}
-                          onChange={(e) => setMarksData({
-                            ...marksData,
-                            [subject.id]: { 
-                              ...marksData[subject.id], 
-                              total: e.target.value 
-                            }
-                          })}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           ) : (
@@ -329,7 +398,7 @@ export default function BatchMarksDialog({ open, onOpenChange, onSuccess }: Batc
           {step === 'input' ? (
             <>
               <Button variant="outline" onClick={handleClose}>Cancel</Button>
-              <Button onClick={validateAndPreview}>Review & Confirm</Button>
+              <Button onClick={validateAndPreview} disabled={!selectedStudent || subjects.length === 0}>Review & Confirm</Button>
             </>
           ) : (
             <>

@@ -14,6 +14,7 @@ function App() {
     id: number | null;
     name: string | null;
     rollNo?: string | null;
+    branchId?: number | null;
     adminRole?: 'admin' | 'super_admin' | null;
   }>({
     role: null,
@@ -38,6 +39,7 @@ function App() {
             id: data.id,
             name: data.name,
             rollNo: data.rollNo || null,
+            branchId: data.branchId || null,
             adminRole: data.adminRole || null,
           });
         }
@@ -57,6 +59,7 @@ function App() {
       id: userData.id,
       name: userData.name,
       rollNo: userData.rollNo,
+      branchId: userData.branchId,
       adminRole: userData.adminRole || null,
     });
   };
@@ -93,6 +96,7 @@ function App() {
             studentName={user.name!} 
             rollNo={user.rollNo!}
             studentId={user.id!}
+            branchId={user.branchId}
             onLogout={handleLogout} 
           />
         )}

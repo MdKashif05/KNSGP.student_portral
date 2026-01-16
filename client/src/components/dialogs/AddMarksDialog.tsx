@@ -8,15 +8,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { normalizeMonthInput } from "@/lib/utils";
+import { Calendar } from "lucide-react";
 
 interface AddMarksDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  branchId?: number;
+  department?: string;
 }
 
-export default function AddMarksDialog({ open, onOpenChange, onSuccess }: AddMarksDialogProps) {
+export default function AddMarksDialog({ open, onOpenChange, onSuccess, branchId, department }: AddMarksDialogProps) {
   const [studentId, setStudentId] = useState("");
+  const [studentSearch, setStudentSearch] = useState("");
   const [subjectId, setSubjectId] = useState("");
   const [month, setMonth] = useState("");
   const [testName, setTestName] = useState("");
@@ -26,8 +31,22 @@ export default function AddMarksDialog({ open, onOpenChange, onSuccess }: AddMar
   const { toast } = useToast();
 
   // Fetch students and subjects
-  const { data: students = [] } = useQuery<any[]>({ queryKey: ['/api/students'] });
-  const { data: subjects = [] } = useQuery<any[]>({ queryKey: ['/api/subjects'] });
+  const { data: studentsResponse } = useQuery<any>({ 
+    queryKey: [`/api/students?limit=1000${branchId ? `&branchId=${branchId}` : department ? `&department=${department}` : ''}`],
+    enabled: open
+  });
+  const studentsRaw = studentsResponse?.data;
+  const students = Array.isArray(studentsRaw) ? studentsRaw : [];
+  
+  const filteredStudents = students.filter((s: any) => 
+    s.name.toLowerCase().includes(studentSearch.toLowerCase()) || 
+    s.rollNo.toLowerCase().includes(studentSearch.toLowerCase())
+  ).slice(0, 50);
+
+  const { data: subjectsRaw = [] } = useQuery<any[]>({ 
+    queryKey: [`/api/subjects${branchId ? `?branchId=${branchId}` : department ? `?department=${department}` : ''}`] 
+  });
+  const subjects = Array.isArray(subjectsRaw) ? subjectsRaw : [];
 
   // Calculate percentage and grade
   const percentage = totalMarks && marksObtained 
@@ -56,12 +75,13 @@ export default function AddMarksDialog({ open, onOpenChange, onSuccess }: AddMar
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    const normalizedMonth = normalizeMonthInput(month);
 
     try {
       await apiRequest("POST", "/api/marks", {
         studentId: parseInt(studentId),
         subjectId: parseInt(subjectId),
-        month,
+        month: normalizedMonth,
         testName,
         marksObtained: parseFloat(marksObtained),
         totalMarks: parseFloat(totalMarks),
@@ -102,18 +122,26 @@ export default function AddMarksDialog({ open, onOpenChange, onSuccess }: AddMar
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="student">Student</Label>
-            <Select value={studentId} onValueChange={setStudentId} required>
-              <SelectTrigger id="student" data-testid="select-student">
-                <SelectValue placeholder="Select student" />
-              </SelectTrigger>
-              <SelectContent>
-                {students.map((student) => (
-                  <SelectItem key={student.id} value={student.id.toString()}>
-                    {student.rollNo} - {student.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="space-y-2">
+              <Input
+                placeholder="Search student..."
+                value={studentSearch}
+                onChange={(e) => setStudentSearch(e.target.value)}
+                className="mb-2"
+              />
+              <Select value={studentId} onValueChange={setStudentId} required>
+                <SelectTrigger id="student" data-testid="select-student">
+                  <SelectValue placeholder="Select student" />
+                </SelectTrigger>
+                <SelectContent className="max-h-64 overflow-y-auto">
+                  {filteredStudents.map((student: any) => (
+                    <SelectItem key={student.id} value={student.id.toString()}>
+                      {student.rollNo} - {student.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -135,14 +163,18 @@ export default function AddMarksDialog({ open, onOpenChange, onSuccess }: AddMar
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="month">Month</Label>
-              <Input
-                id="month"
-                type="month"
-                value={month}
-                onChange={(e) => setMonth(e.target.value)}
-                required
-                data-testid="input-month"
-              />
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  id="month"
+                  type="month"
+                  value={month}
+                  onChange={(e) => setMonth(normalizeMonthInput(e.target.value))}
+                  required
+                  data-testid="input-month"
+                  className="pl-10"
+                />
+              </div>
             </div>
 
             <div className="space-y-2">

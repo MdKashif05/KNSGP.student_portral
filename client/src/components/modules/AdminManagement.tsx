@@ -73,7 +73,7 @@ export default function AdminManagement() {
   const filteredAdmins = admins.filter(admin => 
     admin.name.toLowerCase().includes(search.toLowerCase()) || 
     admin.email.toLowerCase().includes(search.toLowerCase())
-  );
+  ).sort((a: any, b: any) => a.id - b.id);
 
   return (
     <div className="space-y-6">
@@ -104,7 +104,6 @@ export default function AdminManagement() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>ID</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
@@ -116,16 +115,15 @@ export default function AdminManagement() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">Loading...</TableCell>
+                  <TableCell colSpan={6} className="text-center py-8">Loading...</TableCell>
                 </TableRow>
               ) : filteredAdmins.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">No admins found</TableCell>
+                  <TableCell colSpan={6} className="text-center py-8">No admins found</TableCell>
                 </TableRow>
               ) : (
                 filteredAdmins.map((admin) => (
                   <TableRow key={admin.id}>
-                    <TableCell>{admin.id}</TableCell>
                     <TableCell className="font-medium">{admin.name}</TableCell>
                     <TableCell>{admin.email}</TableCell>
                     <TableCell>

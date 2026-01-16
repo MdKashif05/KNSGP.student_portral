@@ -5,10 +5,17 @@ interface AttendanceOverviewChartProps {
   data: any[];
 }
 
-export default function AttendanceOverviewChart({ data }: AttendanceOverviewChartProps) {
+export default function AttendanceOverviewChart({ data = [] }: AttendanceOverviewChartProps) {
+  // Ensure data is an array
+  const safeData = Array.isArray(data) ? data : [];
+  
+  if (!Array.isArray(data)) {
+    console.warn('AttendanceOverviewChart received non-array data:', data);
+  }
+
   // Process monthly aggregate data
   // Group by month and sum present/absent days across all students and subjects
-  const monthlyData = data.reduce((acc: any, record: any) => {
+  const monthlyData = safeData.reduce((acc: any, record: any) => {
     // Use the month field directly (format: "YYYY-MM")
     const month = record.month ? record.month.substring(5) : 'Unknown'; // Extract MM from YYYY-MM
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

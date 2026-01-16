@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { normalizeMonthInput } from "@/lib/utils";
+import { Calendar } from "lucide-react";
 
 interface EditMarksDialogProps {
   open: boolean;
@@ -27,8 +29,12 @@ export default function EditMarksDialog({ open, onOpenChange, onSuccess, marks }
   const { toast } = useToast();
 
   // Fetch students and subjects
-  const { data: students = [] } = useQuery<any[]>({ queryKey: ['/api/students'] });
-  const { data: subjects = [] } = useQuery<any[]>({ queryKey: ['/api/subjects'] });
+  const { data: studentsResponse } = useQuery<any>({ queryKey: ['/api/students?limit=1000'] });
+  const studentsRaw = studentsResponse?.data;
+  const students = Array.isArray(studentsRaw) ? studentsRaw : [];
+  
+  const { data: subjectsRaw = [] } = useQuery<any[]>({ queryKey: ['/api/subjects'] });
+  const subjects = Array.isArray(subjectsRaw) ? subjectsRaw : [];
 
   // Pre-populate form when marks changes
   useEffect(() => {
@@ -69,12 +75,13 @@ export default function EditMarksDialog({ open, onOpenChange, onSuccess, marks }
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    const normalizedMonth = normalizeMonthInput(month);
 
     try {
       await apiRequest("PUT", `/api/marks/${marks.id}`, {
         studentId: parseInt(studentId),
         subjectId: parseInt(subjectId),
-        month,
+        month: normalizedMonth,
         testName,
         marksObtained: parseFloat(marksObtained),
         totalMarks: parseFloat(totalMarks),
@@ -141,14 +148,18 @@ export default function EditMarksDialog({ open, onOpenChange, onSuccess, marks }
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="month">Month</Label>
-              <Input
-                id="month"
-                type="month"
-                value={month}
-                onChange={(e) => setMonth(e.target.value)}
-                required
-                data-testid="input-month"
-              />
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  id="month"
+                  type="month"
+                  value={month}
+                  onChange={(e) => setMonth(normalizeMonthInput(e.target.value))}
+                  required
+                  data-testid="input-month"
+                  className="pl-10"
+                />
+              </div>
             </div>
 
             <div className="space-y-2">

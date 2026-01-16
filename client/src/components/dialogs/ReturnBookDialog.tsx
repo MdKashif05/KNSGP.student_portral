@@ -44,11 +44,6 @@ export default function ReturnBookDialog({ open, onOpenChange, issue, book, stud
         description: `Book returned successfully`,
       });
 
-      // Invalidate queries to refresh data
-      queryClient.invalidateQueries({ queryKey: ['/api/library/books'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/library/issues'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/students'] });
-
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
@@ -75,7 +70,9 @@ export default function ReturnBookDialog({ open, onOpenChange, issue, book, stud
           <div className="space-y-3 p-4 bg-muted rounded-lg">
             <div>
               <p className="text-sm font-medium">Book</p>
-              <p className="text-sm text-muted-foreground">{book?.title || "Unknown"}</p>
+              <p className="text-sm text-muted-foreground">
+                {book?.title || "Unknown"} <span className="text-xs opacity-70">by {book?.author || "Unknown"}</span>
+              </p>
             </div>
             <div>
               <p className="text-sm font-medium">Student</p>

@@ -118,9 +118,9 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             <h1 className="text-5xl font-bold gradient-text">
               KNSGP College
             </h1>
-            <p className="text-2xl font-semibold text-foreground smooth-transition">Computer Science & Engineering</p>
+            <p className="text-2xl font-semibold text-foreground smooth-transition">Student Management System</p>
             <p className="text-muted-foreground max-w-md text-lg smooth-transition">
-              Kameshwar Narayan Singh Govt Polytechnic College Student Portal
+              Kameshwar Narayan Singh Govt Polytechnic College
             </p>
           </div>
 
@@ -153,7 +153,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
               </div>
             </div>
             <h1 className="text-3xl font-bold gradient-text mb-2">KNSGP College Portal</h1>
-            <p className="text-base text-muted-foreground smooth-transition">Computer Science & Engineering</p>
+            <p className="text-base text-muted-foreground smooth-transition">Student Management System</p>
           </div>
 
           <Card className="border-2 border-primary/20 shadow-2xl backdrop-blur-sm bg-card/95 hover-lift">

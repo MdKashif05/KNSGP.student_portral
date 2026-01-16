@@ -8,7 +8,7 @@ interface LibraryBookCardProps {
   author: string;
   copiesAvailable: number;
   totalCopies: number;
-  onIssue?: () => void;
+  branchName?: string;
 }
 
 export default function LibraryBookCard({ 
@@ -16,7 +16,7 @@ export default function LibraryBookCard({
   author, 
   copiesAvailable, 
   totalCopies,
-  onIssue 
+  branchName,
 }: LibraryBookCardProps) {
   const isAvailable = copiesAvailable > 0;
 
@@ -28,7 +28,14 @@ export default function LibraryBookCard({
             <BookOpen className="h-6 w-6 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
-            <CardTitle className="text-base line-clamp-2">{title}</CardTitle>
+            <div className="flex justify-between items-start">
+              <CardTitle className="text-base line-clamp-2">{title}</CardTitle>
+              {branchName && (
+                <Badge variant="outline" className="ml-2 text-xs whitespace-nowrap">
+                  {branchName}
+                </Badge>
+              )}
+            </div>
             <CardDescription className="text-sm mt-1">{author}</CardDescription>
           </div>
         </div>
@@ -43,16 +50,6 @@ export default function LibraryBookCard({
               {copiesAvailable}/{totalCopies} copies
             </span>
           </div>
-          {isAvailable && onIssue && (
-            <Button 
-              size="sm" 
-              onClick={onIssue}
-              data-testid={`button-issue-${title.toLowerCase().replace(/\s+/g, '-')}`}
-            >
-              <BookMarked className="h-4 w-4 mr-1" />
-              Issue
-            </Button>
-          )}
         </div>
       </CardContent>
     </Card>
