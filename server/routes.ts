@@ -947,7 +947,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Parse pagination params
       const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 50;
+      const limit = parseInt(req.query.limit as string) || 1000;
       const offset = (page - 1) * limit;
       const department = (req.query.department as string) || undefined;
       const branchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
@@ -1107,7 +1107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         // Admins can see all attendance (paginated)
         const page = parseInt(req.query.page as string) || 1;
-        const limit = parseInt(req.query.limit as string) || 50;
+        const limit = parseInt(req.query.limit as string) || 1000;
         const offset = (page - 1) * limit;
         const search = (req.query.search as string) || "";
         const department = (req.query.department as string) || undefined;
@@ -1245,7 +1245,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         // Admins can see all marks (paginated)
         const page = parseInt(req.query.page as string) || 1;
-        const limit = parseInt(req.query.limit as string) || 50;
+        const limit = parseInt(req.query.limit as string) || 1000;
         const search = req.query.search as string || "";
         const department = (req.query.department as string) || undefined;
         const branchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;

@@ -43,7 +43,7 @@ interface AdminDashboardProps {
 export default function AdminDashboard({ adminName, adminRole, onLogout }: AdminDashboardProps) {
   const [activeSection, setActiveSection] = useState("dashboard");
   const [studentPage, setStudentPage] = useState(1);
-  const [studentLimit] = useState(50);
+  const [studentLimit] = useState(1000);
   const [selectedBatch, setSelectedBatch] = useState<string | null>(null);
   const [selectedBatchId, setSelectedBatchId] = useState<number | null>(null);
   const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null);
