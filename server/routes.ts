@@ -109,6 +109,193 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== DATA SEEDING ROUTE (For Demo/Testing) ==========
+  app.get("/api/seed-data", requireSuperAdmin, async (req, res) => {
+    try {
+      console.log("[Seed] Starting comprehensive data seeding/fixing...");
+      
+      // 1. Ensure Batch exists
+      let batch = (await storage.getAllBatches())[0];
+      if (!batch) {
+        batch = await storage.createBatch({
+          name: "2023-2026",
+          startYear: 2023,
+          endYear: 2026
+        });
+        console.log("[Seed] Created default batch");
+      }
+
+      // 2. Ensure Branches exist
+      const branchesData = [
+        { name: "Civil Engineering" },
+        { name: "Computer Science & Engineering" },
+        { name: "Electrical Engineering" },
+        { name: "Electronics Engineering" },
+        { name: "Mechanical Engineering" }
+      ];
+
+      const branchesMap = new Map();
+      const existingBranches = await storage.getBranchesByBatch(batch.id);
+      
+      // Map existing
+      for (const b of existingBranches) {
+        branchesMap.set(b.name, b.id);
+      }
+
+      // Create missing
+      for (const b of branchesData) {
+        if (!branchesMap.has(b.name)) {
+          const branch = await storage.createBranch({ ...b, batchId: batch.id });
+          branchesMap.set(b.name, branch.id);
+          console.log(`[Seed] Created branch: ${b.name}`);
+        }
+      }
+
+      // 3. Ensure Subjects exist
+      const subjectsData = [
+        // CSE
+        { code: "CSE301", name: "Data Structures", department: "CSE", branchId: branchesMap.get("Computer Science & Engineering"), semester: 3, totalMarks: 100 },
+        { code: "CSE302", name: "Digital Electronics", department: "CSE", branchId: branchesMap.get("Computer Science & Engineering"), semester: 3, totalMarks: 100 },
+        { code: "CSE303", name: "Object Oriented Programming", department: "CSE", branchId: branchesMap.get("Computer Science & Engineering"), semester: 3, totalMarks: 100 },
+        // Civil
+        { code: "CE301", name: "Fluid Mechanics", department: "CE", branchId: branchesMap.get("Civil Engineering"), semester: 3, totalMarks: 100 },
+        { code: "CE302", name: "Surveying", department: "CE", branchId: branchesMap.get("Civil Engineering"), semester: 3, totalMarks: 100 },
+      ];
+
+      const subjectsMap = new Map();
+      const existingSubjects = await storage.getAllSubjects();
+      for (const s of existingSubjects) {
+        subjectsMap.set(s.code, s.id);
+      }
+
+      for (const s of subjectsData) {
+        if (!subjectsMap.has(s.code) && s.branchId) { // Only create if branch exists
+          const subject = await storage.createSubject(s);
+          subjectsMap.set(s.code, subject.id);
+          console.log(`[Seed] Created subject: ${s.code}`);
+        }
+      }
+
+      // 4. Fix Students (Generate Stats for ALL students)
+      const allStudents = (await storage.getAllStudents(1000, 0)).data;
+      console.log(`[Seed] Found ${allStudents.length} students. Generating stats...`);
+
+      const hashedPassword = await bcrypt.hash("password123", 10);
+
+      // Create dummy students if none exist
+      if (allStudents.length === 0) {
+          const departments = ["CSE", "CE", "EE", "ECE", "ME"];
+          const getBranchId = (dept: string) => {
+            if (dept === "CSE") return branchesMap.get("Computer Science & Engineering");
+            if (dept === "CE") return branchesMap.get("Civil Engineering");
+            if (dept === "EE") return branchesMap.get("Electrical Engineering");
+            if (dept === "ECE") return branchesMap.get("Electronics Engineering");
+            if (dept === "ME") return branchesMap.get("Mechanical Engineering");
+            return undefined;
+          };
+
+          for (let i = 1; i <= 50; i++) {
+            const dept = i <= 20 ? "CSE" : (i <= 30 ? "CE" : "EE");
+            const branchId = getBranchId(dept);
+            const student = await storage.createStudent({
+              rollNo: `2023-${dept}-${i.toString().padStart(3, '0')}`,
+              name: `Student ${i}`,
+              password: hashedPassword,
+              department: dept,
+              branchId: branchId,
+              semester: 3
+            });
+            allStudents.push(student);
+          }
+          console.log("[Seed] Created 50 dummy students");
+      }
+
+      // Generate Stats for everyone
+      let statsCount = 0;
+      for (const student of allStudents) {
+        // Check if stats already exist
+        const existingAttendance = await storage.getAttendanceByStudent(student.id);
+        if (existingAttendance.length > 0) continue; // Skip if already has data
+
+        // Generate Attendance
+        const rand = Math.random();
+        let percentage = 0;
+        if (rand > 0.2) percentage = 80 + Math.random() * 20; 
+        else if (rand > 0.1) percentage = 60 + Math.random() * 20; 
+        else percentage = 30 + Math.random() * 30; 
+
+        const totalDays = 24; 
+        const presentDays = Math.round((percentage / 100) * totalDays);
+        
+        // Find relevant subjects based on department or branch
+        // If student has branchId, use subjects for that branch
+        // If student has department, use subjects for that department
+        let relevantSubjects: any[] = [];
+        
+        // Match by Branch ID first
+        if (student.branchId) {
+             relevantSubjects = subjectsData.filter(sub => sub.branchId === student.branchId);
+             // If local subjectsData doesn't have IDs yet (because we just mapped codes), we need to look up IDs
+        } 
+        
+        // Fallback: Match by Department string
+        if (relevantSubjects.length === 0 && student.department) {
+             relevantSubjects = subjectsData.filter(sub => sub.department === student.department);
+        }
+
+        // Use the map to get actual DB IDs
+        for (const subj of relevantSubjects) {
+           const subjectId = subjectsMap.get(subj.code);
+           if (subjectId) {
+             await storage.createAttendance({
+               studentId: student.id,
+               subjectId: subjectId,
+               month: "2023-10",
+               totalDays,
+               presentDays,
+               percentage: (presentDays / totalDays) * 100,
+               status: calculateAttendanceStatus((presentDays / totalDays) * 100)
+             });
+
+             const marksObtained = Math.floor(Math.random() * 100); 
+             await storage.createMarks({
+               studentId: student.id,
+               subjectId: subjectId,
+               month: "2023-10",
+               testName: "Mid Semester",
+               totalMarks: 100,
+               marksObtained,
+               percentage: marksObtained,
+               grade: calculateGrade(marksObtained)
+             });
+             statsCount++;
+           }
+        }
+      }
+      console.log(`[Seed] Generated stats for ${statsCount} records`);
+
+      // 5. Create Library Books (if empty)
+      const books = await storage.getAllLibraryBooks();
+      if (books.length === 0) {
+        await storage.createLibraryBook({ title: "Introduction to Algorithms", author: "Cormen", copiesAvailable: 5, totalCopies: 10, branchId: branchesMap.get("Computer Science & Engineering") });
+        await storage.createLibraryBook({ title: "Clean Code", author: "Robert C. Martin", copiesAvailable: 3, totalCopies: 5, branchId: branchesMap.get("Computer Science & Engineering") });
+        await storage.createLibraryBook({ title: "Fluid Mechanics", author: "R.K. Bansal", copiesAvailable: 8, totalCopies: 10, branchId: branchesMap.get("Civil Engineering") });
+      }
+
+      // 6. Create Notices (if empty)
+      const notices = await storage.getAllNotices();
+      if (notices.length === 0) {
+        await storage.createNotice({ title: "Mid-Sem Exams", message: "Mid-semester exams will start from 25th Oct.", priority: "high", branchId: null });
+        await storage.createNotice({ title: "CSE Workshop", message: "AI Workshop on Saturday.", priority: "normal", branchId: branchesMap.get("Computer Science & Engineering") });
+      }
+
+      res.json({ success: true, message: "Data fixed/seeded successfully!" });
+    } catch (error: any) {
+      console.error("Seeding error:", error);
+      res.status(500).json({ message: "Seeding failed", error: error.message });
+    }
+  });
+
   // ========== AUTH ROUTES ==========
   
   // Login route

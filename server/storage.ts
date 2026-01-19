@@ -183,11 +183,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllStudents(limit?: number, offset?: number, department?: string, branchId?: number): Promise<{ data: Student[], total: number }> {
-    const query = db.select().from(students).orderBy(asc(students.rollNo));
+    // Sort by length of rollNo first (to group single digits, double digits, etc.), then by value
+    // This fixes the issue where '100' comes before '29' in standard string sort
+    const query = db.select().from(students).orderBy(
+      sql`length(${students.rollNo}) asc`,
+      asc(students.rollNo)
+    );
+    
     if (branchId) {
       query.where(eq(students.branchId, branchId));
     } else if (department) {
-      // Fallback for backward compatibility if needed, or remove if strictly branchId
       query.where(eq(students.department, department));
     }
     
