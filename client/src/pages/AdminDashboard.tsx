@@ -139,7 +139,7 @@ export default function AdminDashboard({ adminName, adminRole, onLogout }: Admin
 
   // Fetch students (paginated)
   const { data: studentsResponse, refetch: refetchStudents } = useQuery<any>({
-    queryKey: [`/api/students?page=${studentPage}&limit=${studentLimit}${selectedDepartment && deptCode(selectedDepartment) ? `&department=${deptCode(selectedDepartment)}` : ""}${selectedBranchId ? `&branchId=${selectedBranchId}` : ""}`],
+    queryKey: [`/api/students?limit=${studentLimit}${selectedDepartment && deptCode(selectedDepartment) ? `&department=${deptCode(selectedDepartment)}` : ""}${selectedBranchId ? `&branchId=${selectedBranchId}` : ""}`],
     enabled: activeSection === 'dashboard' || activeSection === 'students' || activeSection === 'reports' || activeSection === 'branch_home',
   });
 
