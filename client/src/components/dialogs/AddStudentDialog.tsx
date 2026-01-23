@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface AddStudentDialogProps {
   open: boolean;
@@ -25,6 +25,7 @@ export default function AddStudentDialog({ open, onOpenChange, onSuccess, batchI
   const [selectedBranch, setSelectedBranch] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Fetch Batches
   const { data: batches = [] } = useQuery<any[]>({
@@ -66,6 +67,16 @@ export default function AddStudentDialog({ open, onOpenChange, onSuccess, batchI
       return;
     }
 
+    // Strict Branch/Batch Requirement
+    if (!selectedBatch) {
+      toast({ title: "Error", description: "Please select a Batch", variant: "destructive" });
+      return;
+    }
+    if (!selectedBranch && !initialBranchId) {
+      toast({ title: "Error", description: "Please select a Branch", variant: "destructive" });
+      return;
+    }
+
     // Simplified validation
     if (!/^\d{4}-[A-Za-z]+-\d+$/i.test(trimmedRollNo)) {
       toast({
@@ -79,58 +90,46 @@ export default function AddStudentDialog({ open, onOpenChange, onSuccess, batchI
     setIsLoading(true);
 
     try {
-      // Determine Branch ID
-      // 1. Use the selected branch (from props or dropdown)
-      let targetBranchId = selectedBranch ? parseInt(selectedBranch) : undefined;
-      let department = "General";
-
+      // Determine Branch ID (Strictly from selection)
+      let targetBranchId = initialBranchId || (selectedBranch ? parseInt(selectedBranch) : undefined);
+      
       if (!targetBranchId) {
-        // Try to parse branch code from Roll No
-        const parts = trimmedRollNo.split('-');
-        if (parts.length === 3) {
-          const branchCode = parts[1].toUpperCase();
-          
-          // Try to find a matching branch
-          // Mapping common codes to likely Branch names if needed, or check substring
-          const branchObj = branches.find(b => 
-            b.name.toUpperCase() === branchCode || 
-            b.name.toUpperCase().includes(branchCode) ||
-            (branchCode === "CSE" && b.name.includes("Computer Science")) ||
-            (branchCode === "ECE" && b.name.includes("Electronics")) ||
-            (branchCode === "ME" && b.name.includes("Mechanical")) ||
-            (branchCode === "CE" && b.name.includes("Civil")) ||
-            (branchCode === "EE" && b.name.includes("Electrical"))
-          );
-          
-          if (branchObj) {
-            targetBranchId = branchObj.id;
-          }
-        }
+         throw new Error("Branch ID is missing. Please select a branch.");
       }
 
       // Determine Department Name (for legacy schema support)
-      if (targetBranchId) {
-        const branchObj = branches.find(b => b.id === targetBranchId);
-        if (branchObj) {
-           const deptMap: Record<string, string> = {
-            "Computer Science": "CSE",
-            "Electronics": "ECE",
-            "Mechanical": "ME",
-            "Civil": "CE",
-            "Electrical": "EE"
-          };
-          department = deptMap[branchObj.name] || branchObj.name;
-        }
+      let department = "General";
+      const branchObj = branches.find(b => b.id === targetBranchId);
+      if (branchObj) {
+          const deptMap: Record<string, string> = {
+          "Computer Science": "CSE",
+          "Computer Science & Engineering": "CSE",
+          "Electronics": "ECE",
+          "Electronics Engineering": "ECE",
+          "Mechanical": "ME",
+          "Mechanical Engineering": "ME",
+          "Civil": "CE",
+          "Civil Engineering": "CE",
+          "Electrical": "EE",
+          "Electrical Engineering": "EE"
+        };
+        department = deptMap[branchObj.name] || branchObj.name;
       }
 
       await apiRequest("POST", "/api/students", {
         rollNo: trimmedRollNo,
         name: trimmedName,
-        password: trimmedPassword, // No lowercase conversion as requested
+        password: trimmedPassword, 
         department: department, 
-        branchId: targetBranchId, // Can be undefined/null if not found
-        semester: parseInt(semester), // Defaults to 1
+        branchId: targetBranchId, 
+        semester: parseInt(semester),
       });
+
+      // Force aggressive refetching
+      await queryClient.invalidateQueries({ predicate: (query) => query.queryKey.some(k => typeof k === 'string' && k.includes('/api/students')) });
+      await queryClient.refetchQueries({ predicate: (query) => query.queryKey.some(k => typeof k === 'string' && k.includes('/api/students')) });
+      
+      await queryClient.invalidateQueries({ predicate: (query) => query.queryKey.some(k => typeof k === 'string' && k.includes('/api/analytics/global')) });
 
       toast({
         title: "Success",
@@ -164,7 +163,14 @@ export default function AddStudentDialog({ open, onOpenChange, onSuccess, batchI
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Conditionally render Batch/Branch selectors if not provided in context */}
-          {!initialBatchId && (
+          {initialBatchId ? (
+             <div className="p-3 bg-muted rounded-md text-sm text-muted-foreground space-y-1">
+                <p><strong>Batch:</strong> {batches.find(b => b.id === initialBatchId)?.name || "Loading..."}</p>
+                {initialBranchId && (
+                   <p><strong>Branch:</strong> {branches.find(b => b.id === initialBranchId)?.name || "Loading..."}</p>
+                )}
+             </div>
+          ) : (
             <div className="space-y-2">
               <Label htmlFor="batch">Batch</Label>
               <Select value={selectedBatch} onValueChange={setSelectedBatch} required>

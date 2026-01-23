@@ -97,7 +97,7 @@ export default function ChangePasswordDialog({ open, onOpenChange }: ChangePassw
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-106.25">
         <DialogHeader>
           <DialogTitle>Security Settings</DialogTitle>
         </DialogHeader>

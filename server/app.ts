@@ -2,6 +2,7 @@ import express from "express";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import pg from "pg";
+import cors from "cors";
 import { log } from "./vite";
 import dotenv from 'dotenv';
 
@@ -11,6 +12,14 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.set("trust proxy", 1);
+
+// CORS Configuration
+app.use(cors({
+  origin: "http://localhost:5173",
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "Cookie"]
+}));
 
 const PgSession = connectPgSimple(session);
 const pool = new pg.Pool({
@@ -25,12 +34,13 @@ app.use(
       createTableIfMissing: true,
       tableName: "session",
     }),
-    secret: process.env.SESSION_SECRET || "cse-portal-secret-key-change-in-production",
+    secret: process.env.SESSION_SECRET!,
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: process.env.NODE_ENV === "production",
+      secure: false, 
       httpOnly: true,
+      sameSite: "lax",
       maxAge: 24 * 60 * 60 * 1000,
     },
   })

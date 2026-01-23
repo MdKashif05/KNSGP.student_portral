@@ -1,22 +1,22 @@
-import { 
-  Sidebar, 
-  SidebarContent, 
-  SidebarGroup, 
-  SidebarGroupContent, 
-  SidebarGroupLabel, 
-  SidebarMenu, 
-  SidebarMenuButton, 
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
   SidebarFooter
 } from "@/components/ui/sidebar";
-import { 
-  LayoutDashboard, 
-  Users, 
-  BookOpenText, 
-  Calendar, 
-  Award, 
-  BookOpen, 
+import {
+  LayoutDashboard,
+  Users,
+  BookOpenText,
+  Calendar,
+  Award,
+  BookOpen,
   Bell,
   BarChart3,
   GraduationCap,
@@ -24,7 +24,6 @@ import {
   Shield
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import collegeLogo from "@assets/WhatsApp Image 2025-10-11 at 23.32.21_1760206203929.jpeg";
 
 interface AdminSidebarProps {
   activeItem?: string;
@@ -32,6 +31,7 @@ interface AdminSidebarProps {
   onLogout?: () => void;
   adminRole?: 'admin' | 'super_admin' | null;
   hasBranchContext?: boolean;
+  showHiddenMenu?: boolean;
 }
 
 const fullMenuItems = [
@@ -45,30 +45,35 @@ const fullMenuItems = [
   { title: "Reports", icon: BarChart3, id: "reports" },
 ];
 
-export default function AdminSidebar({ activeItem = "dashboard", onNavigate, onLogout, adminRole, hasBranchContext = false }: AdminSidebarProps) {
+export default function AdminSidebar({ activeItem = "dashboard", onNavigate, onLogout, adminRole, hasBranchContext = false, showHiddenMenu = false }: AdminSidebarProps) {
   const baseItems = [
-    { title: "Batches", icon: GraduationCap, id: "dashboard" },
+    { title: "Dashboard", icon: GraduationCap, id: "dashboard" },
     { title: "Reports", icon: BarChart3, id: "reports" }
   ];
   const displayItems = hasBranchContext ? [...fullMenuItems] : baseItems;
-  if (adminRole === 'super_admin') {
+
+  // Show "Admins" menu item only for super_admin
+  if (adminRole === 'super_admin' && !hasBranchContext && showHiddenMenu) {
     // Insert Admins after Dashboard
     displayItems.splice(1, 0, { title: "Admins", icon: Shield, id: "admins" });
   }
+
 
   return (
     <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border p-4">
         <div className="flex items-center gap-3">
-          <img 
-            src={collegeLogo}
+          <img
+            src="/logo.jpeg?v=1"
             alt="KNSGP College Logo"
-            className="h-[50px] w-[50px] rounded-lg object-contain"
+            className="h-12.5 w-12.5 rounded-lg object-contain"
             data-testid="img-college-logo"
           />
           <div>
             <p className="text-sm font-semibold text-sidebar-foreground">KNSGP College</p>
-            <p className="text-xs text-sidebar-foreground/60">Admin Panel</p>
+            <p className="text-xs text-sidebar-foreground/60">
+              {adminRole === 'super_admin' && showHiddenMenu ? 'Super Admin Panel' : 'Admin Panel'}
+            </p>
           </div>
         </div>
       </SidebarHeader>
@@ -94,9 +99,9 @@ export default function AdminSidebar({ activeItem = "dashboard", onNavigate, onL
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border p-4">
-        <Button 
-          variant="ghost" 
-          className="w-full justify-start" 
+        <Button
+          variant="ghost"
+          className="w-full justify-start"
           onClick={onLogout}
           data-testid="button-logout"
         >

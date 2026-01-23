@@ -14,6 +14,7 @@ async function throwIfResNotOk(res: Response) {
       // Not JSON, use default format
     }
     
+    console.error(`API Error: ${errorMessage}`);
     throw new Error(errorMessage);
   }
 }

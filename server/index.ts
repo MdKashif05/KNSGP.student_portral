@@ -1,7 +1,13 @@
+import "./env-setup";
 import { type Request, type Response, type NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import app from "./app";
+
+console.log("ENV CHECK:", {
+  DATABASE_URL: !!process.env.DATABASE_URL,
+  SESSION_SECRET: !!process.env.SESSION_SECRET,
+});
 
 (async () => {
   const server = await registerRoutes(app);

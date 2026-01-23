@@ -25,7 +25,7 @@ import AddNoticeDialog from "@/components/dialogs/AddNoticeDialog";
 import EditNoticeDialog from "@/components/dialogs/EditNoticeDialog";
 import DeleteConfirmDialog from "@/components/dialogs/DeleteConfirmDialog";
 import AdminManagement from "@/components/modules/AdminManagement";
-import { Users, TrendingUp, BookOpen, Award, Plus, Pencil, Trash2, Infinity as InfinityIcon, CalendarRange, School, ChevronRight, Layers, ArrowLeft, Code, Zap, Wrench, Building2, Radio, GraduationCap, Microscope, Hammer, Plug, Cpu, Settings } from "lucide-react";
+import { Users, TrendingUp, BookOpen, Award, Plus, Pencil, Trash2, Infinity as InfinityIcon, CalendarRange, School, ChevronRight, Layers, ArrowLeft, Code, Zap, Wrench, Building2, Radio, GraduationCap, Microscope, Hammer, Plug, Cpu, Settings, Search, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,20 +33,25 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { sortStudentsByRollNo } from "@/lib/utils";
+import { useActive } from "@/contexts/ActiveContext";
 
 interface AdminDashboardProps {
   adminName: string;
   adminRole?: 'admin' | 'super_admin' | null;
   onLogout?: () => void;
+  initialSection?: string;
+  isSecretRoute?: boolean;
 }
 
-export default function AdminDashboard({ adminName, adminRole, onLogout }: AdminDashboardProps) {
-  const [activeSection, setActiveSection] = useState("dashboard");
+export default function AdminDashboard({ adminName, adminRole, onLogout, initialSection, isSecretRoute = false }: AdminDashboardProps) {
+  // Use shared context for Single Source of Truth
+  const { activeBatchId, setActiveBatchId, activeBranchId, setActiveBranchId } = useActive();
+  
+  const [activeSection, setActiveSection] = useState(initialSection || "dashboard");
   const [studentPage, setStudentPage] = useState(1);
   const [studentLimit] = useState(1000);
-  const [selectedBatch, setSelectedBatch] = useState<string | null>(null);
-  const [selectedBatchId, setSelectedBatchId] = useState<number | null>(null);
-  const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null);
+  
+  // Local state for UI toggles
   const [showAddBatch, setShowAddBatch] = useState(false);
   const [editingBatch, setEditingBatch] = useState<any | null>(null);
   const [showAddBranch, setShowAddBranch] = useState(false);
@@ -68,6 +73,7 @@ export default function AdminDashboard({ adminName, adminRole, onLogout }: Admin
   const [bookToIssue, setBookToIssue] = useState<any>(null);
   const [issueToReturn, setIssueToReturn] = useState<any>(null);
   const [deleteType, setDeleteType] = useState<'student' | 'subject' | 'book' | 'notice' | 'batch' | 'branch' | null>(null);
+  const [studentSearch, setStudentSearch] = useState("");
   const { toast } = useToast();
 
   const style = {
@@ -79,11 +85,15 @@ export default function AdminDashboard({ adminName, adminRole, onLogout }: Admin
   const deptCode = (name: string | null) => {
     switch (name) {
       case "Computer Science": return "CSE";
+      case "Computer Science & Engineering": return "CSE";
       case "Electronics": return "ECE";
+      case "Electronics Engineering": return "ECE";
       case "Mechanical": return "ME";
+      case "Mechanical Engineering": return "ME";
       case "Civil":
       case "Civil Engineering": return "CE";
       case "Electrical": return "EE";
+      case "Electrical Engineering": return "EE";
       default: return undefined;
     }
   };
@@ -121,26 +131,67 @@ export default function AdminDashboard({ adminName, adminRole, onLogout }: Admin
   });
   const batchesError = batchesErrorObj ? (batchesErrorObj as Error).message : null;
 
+  // Derived active batch name
+  const selectedBatch = batches.find(b => b.id === activeBatchId)?.name || null;
+
   // Fetch branches first
   const { data: branches = [], isLoading: branchesLoading, error: branchesErrorObj } = useQuery<any[]>({
-    queryKey: [`/api/branches?batchId=${selectedBatchId ?? ''}`],
-    enabled: !!selectedBatchId,
+    queryKey: [`/api/branches?batchId=${activeBatchId ?? ''}`],
+    enabled: !!activeBatchId,
   });
   const branchesError = branchesErrorObj ? (branchesErrorObj as Error).message : null;
 
-  const selectedBranchId = branches.find(b => b.name === selectedDepartment)?.id;
+  // Validate Active IDs against fetched data to prevent stale state from localStorage
+  useEffect(() => {
+    if (batches.length > 0 && activeBatchId) {
+      const exists = batches.find(b => b.id === activeBatchId);
+      if (!exists) {
+        setActiveBatchId(null);
+        setActiveBranchId(null);
+      }
+    }
+  }, [batches, activeBatchId, setActiveBatchId, setActiveBranchId]);
+
+  useEffect(() => {
+    // Only validate branch if we have loaded branches and have an active ID
+    if (!branchesLoading && branches.length > 0 && activeBranchId) {
+      const exists = branches.find(b => b.id === activeBranchId);
+      if (!exists) {
+        setActiveBranchId(null);
+      }
+    } else if (!branchesLoading && branches.length === 0 && activeBranchId && activeBatchId) {
+       // If we have a batch but no branches found for it, the branch ID must be invalid
+       setActiveBranchId(null);
+    }
+  }, [branches, branchesLoading, activeBranchId, activeBatchId, setActiveBranchId]);
+
+  // Derived active branch name
+  const selectedDepartment = branches.find(b => b.id === activeBranchId)?.name || null;
+
+  // Sync active section if branch is selected on load
+  useEffect(() => {
+    if (activeBranchId && activeSection === 'dashboard') {
+      setActiveSection('branch_home');
+    }
+    // When clearing branch, go back to dashboard
+    if (!activeBranchId && activeSection === 'branch_home') {
+      setActiveSection('dashboard');
+    }
+  }, [activeBranchId, activeSection]);
 
   // Fetch global analytics
   // Only fetch if we are in the right section AND if we have resolved the branch ID (if a department is selected)
   const { data: globalStats } = useQuery<any>({
-    queryKey: [`/api/analytics/global${selectedBranchId ? `?branchId=${selectedBranchId}` : ''}`],
-    enabled: (activeSection === 'dashboard' || activeSection === 'reports') && (!selectedDepartment || selectedBranchId !== undefined),
+    queryKey: [`/api/analytics/global${activeBranchId ? `?branchId=${activeBranchId}` : '?'}`],
+    enabled: (activeSection === 'dashboard' || activeSection === 'reports' || activeSection === 'branch_home') && (!selectedDepartment || activeBranchId !== undefined),
   });
 
   // Fetch students (paginated)
   const { data: studentsResponse, refetch: refetchStudents } = useQuery<any>({
-    queryKey: [`/api/students?limit=${studentLimit}${selectedDepartment && deptCode(selectedDepartment) ? `&department=${deptCode(selectedDepartment)}` : ""}${selectedBranchId ? `&branchId=${selectedBranchId}` : ""}`],
+    queryKey: [`/api/students?limit=${studentLimit}${selectedDepartment && deptCode(selectedDepartment) ? `&department=${deptCode(selectedDepartment)}` : ""}${activeBranchId ? `&branchId=${activeBranchId}` : ""}${activeBatchId ? `&batchId=${activeBatchId}` : ""}`],
     enabled: activeSection === 'dashboard' || activeSection === 'students' || activeSection === 'reports' || activeSection === 'branch_home',
+    staleTime: 0, // Ensure data is always fresh
+    refetchOnWindowFocus: true,
   });
 
   const students = studentsResponse?.data || [];
@@ -149,35 +200,35 @@ export default function AdminDashboard({ adminName, adminRole, onLogout }: Admin
 
   // Fetch subjects
   const { data: subjects = [], refetch: refetchSubjects } = useQuery<any[]>({
-    queryKey: [`/api/subjects?${selectedDepartment && deptCode(selectedDepartment) ? `department=${deptCode(selectedDepartment)}&` : ""}${selectedBranchId ? `branchId=${selectedBranchId}` : ""}`],
+    queryKey: [`/api/subjects?${selectedDepartment && deptCode(selectedDepartment) ? `department=${deptCode(selectedDepartment)}&` : ""}${activeBranchId ? `branchId=${activeBranchId}` : ""}${activeBatchId ? `&batchId=${activeBatchId}` : ""}`],
     enabled: activeSection === 'dashboard' || activeSection === 'subjects' || activeSection === 'reports' || activeSection === 'branch_home',
   });
 
   // Fetch library books
   const { data: books = [], refetch: refetchBooks } = useQuery<any[]>({
-    queryKey: [`/api/library/books${selectedBranchId ? `?branchId=${selectedBranchId}` : ""}`],
+    queryKey: [`/api/library/books${activeBranchId ? `?branchId=${activeBranchId}` : "?"}${activeBatchId ? `&batchId=${activeBatchId}` : ""}`],
     enabled: activeSection === 'library' || activeSection === 'reports' || activeSection === 'dashboard' || activeSection === 'branch_home',
   });
 
   // Fetch attendance records (paginated for reports, lightweight for dashboard)
   const { data: attendanceResponse } = useQuery<any>({
-    queryKey: [`/api/attendance?limit=1000${selectedBranchId ? `&branchId=${selectedBranchId}` : ""}`], // Limit for charts
-    enabled: activeSection === 'dashboard' || activeSection === 'reports' || activeSection === 'branch_home',
+    queryKey: [`/api/attendance?limit=1000${activeBranchId ? `&branchId=${activeBranchId}` : ""}${activeBatchId ? `&batchId=${activeBatchId}` : ""}`], // Limit for charts
+    enabled: activeSection === 'dashboard' || activeSection === 'reports' || (activeSection === 'branch_home' && activeBranchId !== undefined),
   });
   const attendanceRaw = attendanceResponse?.data;
   const attendance = Array.isArray(attendanceRaw) ? attendanceRaw : [];
 
   // Fetch marks records (paginated for reports, lightweight for dashboard)
   const { data: marksResponse } = useQuery<any>({
-    queryKey: [`/api/marks?limit=1000${selectedBranchId ? `&branchId=${selectedBranchId}` : ""}`], // Limit for charts
-    enabled: activeSection === 'dashboard' || activeSection === 'reports' || activeSection === 'branch_home',
+    queryKey: [`/api/marks?limit=1000${activeBranchId ? `&branchId=${activeBranchId}` : ""}${activeBatchId ? `&batchId=${activeBatchId}` : ""}`], // Limit for charts
+    enabled: activeSection === 'dashboard' || activeSection === 'reports' || (activeSection === 'branch_home' && activeBranchId !== undefined),
   });
   const marksRaw = marksResponse?.data;
   const marks = Array.isArray(marksRaw) ? marksRaw : [];
 
   // Fetch notices
   const { data: notices = [], refetch: refetchNotices } = useQuery<any[]>({
-    queryKey: [`/api/notices${selectedBranchId ? `?branchId=${selectedBranchId}` : ''}`],
+    queryKey: [`/api/notices${activeBranchId ? `?branchId=${activeBranchId}` : '?'}${activeBatchId ? `&batchId=${activeBatchId}` : ""}`],
     enabled: activeSection === 'notices' || activeSection === 'branch_home',
   });
 
@@ -223,9 +274,9 @@ export default function AdminDashboard({ adminName, adminRole, onLogout }: Admin
          queryClient.invalidateQueries({ predicate: (query) => query.queryKey.some(k => typeof k === 'string' && k.includes('/api/notices')) });
       }
       if (type === 'batch') queryClient.invalidateQueries({ queryKey: ['/api/batches'] });
-      if (type === 'branch' && selectedBatchId) {
-        queryClient.invalidateQueries({ queryKey: [`/api/branches?batchId=${selectedBatchId}`] });
-        queryClient.refetchQueries({ queryKey: [`/api/branches?batchId=${selectedBatchId}`] });
+      if (type === 'branch' && activeBatchId) {
+        queryClient.invalidateQueries({ queryKey: [`/api/branches?batchId=${activeBatchId}`] });
+        queryClient.refetchQueries({ queryKey: [`/api/branches?batchId=${activeBatchId}`] });
       }
       setShowDeleteDialog(false);
       setItemToDelete(null);
@@ -260,6 +311,11 @@ export default function AdminDashboard({ adminName, adminRole, onLogout }: Admin
     }
   };
 
+  const filteredStudents = students.filter((student: any) => 
+    student.name.toLowerCase().includes(studentSearch.toLowerCase()) || 
+    student.rollNo.toLowerCase().includes(studentSearch.toLowerCase())
+  );
+
   const studentsColumns = [
     { key: 'rollNo', label: 'Roll Number' },
     { key: 'name', label: 'Name' },
@@ -270,12 +326,19 @@ export default function AdminDashboard({ adminName, adminRole, onLogout }: Admin
         const percentage = parseFloat(value);
         return (
           <Badge variant={percentage >= 75 ? 'default' : 'destructive'}>
-            {value}%
+            {percentage.toFixed(2)}%
           </Badge>
         );
       }
     },
-    { key: 'avgMarks', label: 'Avg Marks' },
+    { 
+      key: 'avgMarks', 
+      label: 'Avg Marks',
+      render: (value: string) => {
+        const marks = parseFloat(value);
+        return <span>{marks.toFixed(2)}%</span>;
+      }
+    },
     {
       key: 'avgMarks',
       label: 'Grade',
@@ -367,9 +430,9 @@ export default function AdminDashboard({ adminName, adminRole, onLogout }: Admin
     onSuccess: async () => {
       toast({ title: "Branch updated", description: "Branch name saved" });
       setEditingBranch(null);
-      if (selectedBatchId) {
-        await queryClient.invalidateQueries({ queryKey: [`/api/branches?batchId=${selectedBatchId}`] });
-        await queryClient.refetchQueries({ queryKey: [`/api/branches?batchId=${selectedBatchId}`] });
+      if (activeBatchId) {
+        await queryClient.invalidateQueries({ queryKey: [`/api/branches?batchId=${activeBatchId}`] });
+        await queryClient.refetchQueries({ queryKey: [`/api/branches?batchId=${activeBatchId}`] });
       }
     },
     onError: (error: any) => {
@@ -480,7 +543,7 @@ export default function AdminDashboard({ adminName, adminRole, onLogout }: Admin
                             <div className="flex items-center p-5">
                               <div 
                                 className="flex-1 cursor-pointer flex items-center gap-6" 
-                                onClick={() => { setSelectedBatch(batch.name); setSelectedBatchId(batch.id); }}
+                                onClick={() => setActiveBatchId(batch.id)}
                               >
                                 <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform duration-300">
                                   <CalendarRange className="h-7 w-7" />
@@ -508,7 +571,7 @@ export default function AdminDashboard({ adminName, adminRole, onLogout }: Admin
                                 >
                                   <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
                                 </Button>
-                                <div className="text-xs text-muted-foreground font-medium flex items-center ml-2 cursor-pointer" onClick={() => { setSelectedBatch(batch.name); setSelectedBatchId(batch.id); }}>
+                                <div className="text-xs text-muted-foreground font-medium flex items-center ml-2 cursor-pointer" onClick={() => setActiveBatchId(batch.id)}>
                                   View <ChevronRight className="h-3 w-3 ml-1" />
                                 </div>
                               </div>
@@ -525,7 +588,7 @@ export default function AdminDashboard({ adminName, adminRole, onLogout }: Admin
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b pb-6">
                   <div>
                     <div className="flex items-center gap-2 mb-2">
-                      <Button variant="ghost" size="sm" className="pl-0 text-muted-foreground hover:text-foreground" onClick={() => { setSelectedBatch(null); setSelectedBatchId(null); setSelectedDepartment(null); }}>
+                      <Button variant="ghost" size="sm" className="pl-0 text-muted-foreground hover:text-foreground" onClick={() => { setActiveBatchId(null); setActiveBranchId(null); }}>
                         <ArrowLeft className="h-4 w-4 mr-1" /> Back to Batches
                       </Button>
                     </div>
@@ -539,7 +602,7 @@ export default function AdminDashboard({ adminName, adminRole, onLogout }: Admin
                   <AddBranchDialog 
                     open={showAddBranch} 
                     onOpenChange={setShowAddBranch} 
-                    batchId={selectedBatchId} 
+                    batchId={activeBatchId} 
                   />
                 </div>
 
@@ -547,7 +610,7 @@ export default function AdminDashboard({ adminName, adminRole, onLogout }: Admin
                     {branchesError && (
                       <div className="col-span-full p-4 rounded-lg border border-destructive/20 bg-destructive/5 text-destructive text-center">
                         <p>Error loading branches: {branchesError}</p>
-                        <Button variant="outline" size="sm" className="mt-2" onClick={() => queryClient.invalidateQueries({ queryKey: [`/api/branches?batchId=${selectedBatchId}`] })}>
+                        <Button variant="outline" size="sm" className="mt-2" onClick={() => queryClient.invalidateQueries({ queryKey: [`/api/branches?batchId=${activeBatchId}`] })}>
                           Retry
                         </Button>
                       </div>
@@ -582,7 +645,7 @@ export default function AdminDashboard({ adminName, adminRole, onLogout }: Admin
                           <CardContent className="p-0">
                             <div className="flex flex-col p-5 gap-4">
                               <div className="flex items-center justify-between">
-                                <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary/10 to-purple-500/10 group-hover:from-primary/20 group-hover:to-purple-500/20 flex items-center justify-center text-primary transition-all duration-300 shadow-sm group-hover:shadow-inner group-hover:scale-110">
+                                <div className="h-12 w-12 rounded-2xl bg-linear-to-br from-primary/10 to-purple-500/10 group-hover:from-primary/20 group-hover:to-purple-500/20 flex items-center justify-center text-primary transition-all duration-300 shadow-sm group-hover:shadow-inner group-hover:scale-110">
                                   <BranchIcon className="h-6 w-6" />
                                 </div>
                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -596,17 +659,17 @@ export default function AdminDashboard({ adminName, adminRole, onLogout }: Admin
                               </div>
                               
                               <div 
-                                className="cursor-pointer space-y-2"
-                                onClick={() => { setSelectedDepartment(branch.name); setActiveSection("branch_home"); }}
-                              >
-                                <h4 className="text-lg font-bold group-hover:text-primary transition-colors flex items-center gap-2">
-                                  {branch.name}
-                                  <ChevronRight className="h-4 w-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 text-primary" />
-                                </h4>
-                                <p className="text-sm text-muted-foreground line-clamp-2">
-                                  Manage students, attendance, and marks for {branch.name}
-                                </p>
-                              </div>
+                              className="cursor-pointer space-y-2"
+                              onClick={() => { setActiveBranchId(branch.id); }}
+                            >
+                              <h4 className="text-lg font-bold group-hover:text-primary transition-colors flex items-center gap-2">
+                                {branch.name}
+                                <ChevronRight className="h-4 w-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 text-primary" />
+                              </h4>
+                              <p className="text-sm text-muted-foreground line-clamp-2">
+                                Manage students, attendance, and marks for {branch.name}
+                              </p>
+                            </div>
                             </div>
                           </CardContent>
                         </Card>
@@ -634,17 +697,13 @@ export default function AdminDashboard({ adminName, adminRole, onLogout }: Admin
 
       case "branch_home":
         // Calculate branch stats
-        const branchStudentCount = studentTotal;
+        const branchStudentCount = globalStats?.totalStudents || studentTotal;
         
         // Avg Attendance
-        const branchTotalPresentDays = attendance.reduce((sum: number, a: any) => sum + (a.presentDays || 0), 0);
-        const branchTotalDaysCount = attendance.reduce((sum: number, a: any) => sum + (a.totalDays || 0), 0);
-        const branchAvgAttendance = branchTotalDaysCount > 0 ? ((branchTotalPresentDays / branchTotalDaysCount) * 100).toFixed(1) : '0.0';
+        const branchAvgAttendance = globalStats?.avgAttendance?.toFixed(1) || '0.0';
 
         // Avg Marks
-        const branchTotalMarksObtained = marks.reduce((sum: number, m: any) => sum + (m.marksObtained || 0), 0);
-        const branchTotalMarksTotal = marks.reduce((sum: number, m: any) => sum + (m.totalMarks || 0), 0);
-        const branchAvgMarks = branchTotalMarksTotal > 0 ? ((branchTotalMarksObtained / branchTotalMarksTotal) * 100).toFixed(1) : '0.0';
+        const branchAvgMarks = globalStats?.avgMarks?.toFixed(1) || '0.0';
 
         return (
           <div className="space-y-6">
@@ -653,9 +712,11 @@ export default function AdminDashboard({ adminName, adminRole, onLogout }: Admin
                 <h2 className="text-2xl font-bold gradient-text">Branch Dashboard</h2>
                 <p className="text-sm text-muted-foreground">{selectedBatch} • {selectedDepartment}</p>
               </div>
-              <Button variant="outline" onClick={() => { setSelectedDepartment(null); setActiveSection("dashboard"); }}>
-                Change Batch/Branch
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => { setActiveBranchId(null); setActiveSection("dashboard"); }}>
+                    Change Branch
+                </Button>
+              </div>
             </div>
 
             {/* Stats Cards */}
@@ -685,15 +746,24 @@ export default function AdminDashboard({ adminName, adminRole, onLogout }: Admin
       case "students":
         return (
           <div className="space-y-6 flex flex-col h-[calc(100vh-140px)]">
-            <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center flex-shrink-0">
+            <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center shrink-0">
               <div>
                 <h2 className="text-2xl sm:text-3xl font-bold gradient-text">Student Management</h2>
                 <p className="text-sm sm:text-base text-muted-foreground mt-1">Manage all student records</p>
               </div>
               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto items-center">
-                 <Badge variant="outline" className="h-9 px-4 flex items-center gap-2 mr-2">
-                    <InfinityIcon className="h-4 w-4" />
-                    <span>Infinity Mode</span>
+                 <div className="relative w-full sm:w-64 mr-2">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search by name or roll no..."
+                      value={studentSearch}
+                      onChange={(e) => setStudentSearch(e.target.value)}
+                      className="pl-8"
+                    />
+                 </div>
+                 <Badge variant="outline" className="h-9 px-4 flex items-center gap-2 mr-2 group hover:border-green-500 hover:text-green-500 hover:bg-green-500/10 transition-all duration-300 cursor-default">
+                    <InfinityIcon className="h-4 w-4 group-hover:animate-pulse" />
+                    <span>Infinity</span>
                  </Badge>
                 <Button 
                   onClick={() => setShowAddStudentDialog(true)}
@@ -706,15 +776,18 @@ export default function AdminDashboard({ adminName, adminRole, onLogout }: Admin
               </div>
             </div>
             <div className="flex-1 min-h-0">
+              {/* Debug Info (Hidden from user unless needed) */}
+              <div className="hidden">Debug: Batch={selectedBatch}, BranchID={activeBranchId}, Dept={selectedDepartment}</div>
+              
               <DataTable
-                title="All Students"
-                description={`Showing all ${students.length} students`}
+                title={selectedDepartment ? `Students - ${selectedDepartment} (${selectedBatch})` : "All Students"}
+                description={`Showing ${filteredStudents.length} of ${students.length} students.`}
                 columns={studentsColumns}
-                data={sortStudentsByRollNo(students)}
+                data={sortStudentsByRollNo(filteredStudents)}
                 actions={true}
                 onEdit={(row) => handleEdit('student', row)}
                 onDelete={(row) => handleDelete('student', row)}
-                enableVirtualization={true}
+                enableVirtualization={false}
               />
             </div>
           </div>
@@ -750,10 +823,10 @@ export default function AdminDashboard({ adminName, adminRole, onLogout }: Admin
         );
 
       case "attendance":
-        return <AttendanceManagement department={deptCode(selectedDepartment || null)} branchId={selectedBranchId} />;
+        return <AttendanceManagement department={deptCode(selectedDepartment || null)} branchId={activeBranchId ?? undefined} batchId={activeBatchId ?? undefined} />;
 
       case "marks":
-        return <MarksManagement department={deptCode(selectedDepartment || null)} branchId={selectedBranchId} />;
+        return <MarksManagement department={deptCode(selectedDepartment || null)} branchId={activeBranchId ?? undefined} batchId={activeBatchId ?? undefined} />;
 
       case "library":
         return (
@@ -783,7 +856,7 @@ export default function AdminDashboard({ adminName, adminRole, onLogout }: Admin
                       author={book.author}
                       copiesAvailable={book.copiesAvailable}
                       totalCopies={book.totalCopies}
-                      branchName={!selectedBranchId && book.branchId ? branches.find(b => b.id === book.branchId)?.name : undefined}
+                      branchName={!activeBranchId && book.branchId ? branches.find(b => b.id === book.branchId)?.name : undefined}
                     />
                     <div className="absolute top-2 right-2 flex gap-1">
                       <Button
@@ -843,7 +916,7 @@ export default function AdminDashboard({ adminName, adminRole, onLogout }: Admin
       case "reports":
         // Calculate analytics
         // Prefer studentTotal (filtered count from students API) over globalStats if available and matching context
-        const reportsStudentCount = selectedBranchId ? studentTotal : (globalStats?.totalStudents || students.length);
+        const reportsStudentCount = activeBranchId ? studentTotal : (globalStats?.totalStudents || students.length);
         const reportsSubjectCount = subjects.length;
         const reportsBooksCount = books.length;
         // const reportsAttendanceRecords = attendance.length;
@@ -1073,8 +1146,8 @@ export default function AdminDashboard({ adminName, adminRole, onLogout }: Admin
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {needAttentionList.map((student: any, index: number) => (
-                        <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                      {needAttentionList.map((student: any) => (
+                        <div key={student.rollNo} className="flex items-center justify-between p-3 border rounded-lg">
                           <div>
                             <p className="font-medium">{student.name}</p>
                             <p className="text-xs text-muted-foreground">{student.rollNo}</p>
@@ -1102,18 +1175,21 @@ export default function AdminDashboard({ adminName, adminRole, onLogout }: Admin
     <SidebarProvider style={style as React.CSSProperties}>
       <div className="flex h-screen w-full">
         <AdminSidebar 
-        activeItem={activeSection} 
-        onNavigate={setActiveSection} 
-        onLogout={onLogout}
-        adminRole={adminRole}
-        hasBranchContext={!!selectedBatch && !!selectedDepartment && activeSection !== 'dashboard'}
-      />
+          activeItem={activeSection} 
+          onNavigate={setActiveSection} 
+          onLogout={onLogout}
+          adminRole={adminRole}
+          hasBranchContext={!!selectedBatch && !!selectedDepartment && activeSection !== 'dashboard' && activeSection !== 'admins'}
+          showHiddenMenu={isSecretRoute}
+        />
         <div className="flex flex-col flex-1">
           <header className="flex items-center justify-between p-4 sm:p-6 border-b sticky top-0 glass-effect z-10 backdrop-blur-xl">
             <div className="flex items-center gap-3 sm:gap-4">
               <SidebarTrigger data-testid="button-sidebar-toggle" />
               <div>
-                <h1 className="text-xl sm:text-2xl font-bold gradient-text">Admin Dashboard</h1>
+                <h1 className="text-xl sm:text-2xl font-bold gradient-text">
+                  {adminRole === 'super_admin' && isSecretRoute ? 'Super Admin Dashboard' : 'Admin Dashboard'}
+                </h1>
                 <p className="text-sm text-muted-foreground">
                   Welcome, {adminName}
                   {selectedBatch && <> • {selectedBatch}</>}
@@ -1122,8 +1198,9 @@ export default function AdminDashboard({ adminName, adminRole, onLogout }: Admin
               </div>
             </div>
             {(selectedDepartment || selectedBatch) && (
-              <Button variant="outline" onClick={() => { setSelectedDepartment(null); setSelectedBatch(null); setActiveSection("dashboard"); }}>
-                Clear Department
+              <Button variant="outline" size="sm" onClick={() => { setActiveBatchId(null); setActiveBranchId(null); setActiveSection("dashboard"); }}>
+                <span className="hidden sm:inline">Change Batch</span>
+                <span className="sm:hidden">Change</span>
               </Button>
             )}
           </header>
@@ -1140,8 +1217,8 @@ export default function AdminDashboard({ adminName, adminRole, onLogout }: Admin
            queryClient.invalidateQueries({ predicate: (query) => query.queryKey.some(k => typeof k === 'string' && k.includes('/api/students')) });
            queryClient.invalidateQueries({ predicate: (query) => query.queryKey.some(k => typeof k === 'string' && k.includes('/api/analytics/global')) });
         }}
-        batchId={selectedBatchId}
-        branchId={selectedBranchId}
+        batchId={activeBatchId || undefined}
+        branchId={activeBranchId || undefined}
       />
 
       <AddSubjectDialog
@@ -1150,17 +1227,17 @@ export default function AdminDashboard({ adminName, adminRole, onLogout }: Admin
         onSuccess={() => {
            queryClient.invalidateQueries({ predicate: (query) => query.queryKey.some(k => typeof k === 'string' && k.includes('/api/subjects')) });
         }}
-        branchId={selectedBranchId}
+        branchId={activeBranchId ?? undefined}
       />
 
       <AddBookDialog
         open={showAddBookDialog}
         onOpenChange={setShowAddBookDialog}
-        branchId={selectedBranchId}
         onSuccess={() => {
            queryClient.invalidateQueries({ predicate: (query) => query.queryKey.some(k => typeof k === 'string' && k.includes('/api/library/books')) });
            queryClient.invalidateQueries({ predicate: (query) => query.queryKey.some(k => typeof k === 'string' && k.includes('/api/analytics/global')) });
         }}
+        branchId={activeBranchId || undefined}
       />
 
       <EditStudentDialog
@@ -1169,10 +1246,6 @@ export default function AdminDashboard({ adminName, adminRole, onLogout }: Admin
         student={itemToEdit}
         onSuccess={() => {
            queryClient.invalidateQueries({ predicate: (query) => query.queryKey.some(k => typeof k === 'string' && k.includes('/api/students')) });
-           queryClient.resetQueries({ predicate: (query) => query.queryKey.some(k => typeof k === 'string' && k.includes('/api/marks')) });
-           queryClient.resetQueries({ predicate: (query) => query.queryKey.some(k => typeof k === 'string' && k.includes('/api/attendance')) });
-           queryClient.resetQueries({ predicate: (query) => query.queryKey.some(k => typeof k === 'string' && k.includes('/api/library/issues')) });
-           queryClient.invalidateQueries({ predicate: (query) => query.queryKey.some(k => typeof k === 'string' && k.includes('/api/analytics/global')) });
         }}
       />
 
@@ -1197,11 +1270,10 @@ export default function AdminDashboard({ adminName, adminRole, onLogout }: Admin
       <AddNoticeDialog
         open={showAddNoticeDialog}
         onOpenChange={setShowAddNoticeDialog}
-        branchId={selectedBranchId}
-        branchName={selectedDepartment}
         onSuccess={() => {
-          queryClient.invalidateQueries({ predicate: (query) => query.queryKey.some(k => typeof k === 'string' && k.includes('/api/notices')) });
+           queryClient.invalidateQueries({ predicate: (query) => query.queryKey.some(k => typeof k === 'string' && k.includes('/api/notices')) });
         }}
+        branchId={activeBranchId ?? undefined}
       />
 
       <EditNoticeDialog
@@ -1213,18 +1285,12 @@ export default function AdminDashboard({ adminName, adminRole, onLogout }: Admin
         }}
       />
 
-      <DeleteConfirmDialog
-        open={showDeleteDialog}
-        onOpenChange={setShowDeleteDialog}
-        onConfirm={confirmDelete}
-        title={`Delete ${deleteType}?`}
-        description={
-          deleteType === 'batch' 
-            ? "Are you sure you want to delete this Batch? This will permanently delete ALL branches, students, and subjects in this batch. This action cannot be undone."
-            : deleteType === 'branch'
-            ? "Are you sure you want to delete this Branch? This will permanently delete ALL students and subjects in this branch. This action cannot be undone."
-            : `Are you sure you want to delete this ${deleteType}? This action cannot be undone.`
-        }
+      <DeleteConfirmDialog 
+        open={showDeleteDialog} 
+        onOpenChange={setShowDeleteDialog} 
+        onConfirm={confirmDelete} 
+        title={`Delete ${deleteType}`} 
+        description={`Are you sure you want to delete this ${deleteType}? This action cannot be undone.`} 
         isLoading={deleteMutation.isPending}
       />
     </SidebarProvider>

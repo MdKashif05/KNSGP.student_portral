@@ -3,12 +3,19 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
+import { Switch, Route, useLocation } from "wouter";
+import { AnimatePresence, motion } from "framer-motion";
 import LoginPage from "@/pages/LoginPage";
 import AdminDashboard from "@/pages/AdminDashboard";
 import StudentDashboard from "@/pages/StudentDashboard";
-import Chatbot from "@/components/layout/Chatbot";
+import NotFound from "@/pages/NotFound";
+import SuperAdminLogin from "@/pages/SuperAdminLogin";
+import Chatbot from "@/components/common/Chatbot";
+
+import { ActiveProvider } from "@/contexts/ActiveContext";
 
 function App() {
+  const [location] = useLocation();
   const [user, setUser] = useState<{ 
     role: 'admin' | 'student' | null; 
     id: number | null;
@@ -86,26 +93,58 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        {!user.role ? (
-          <LoginPage onLogin={handleLogin} />
-        ) : user.role === 'admin' ? (
-          <AdminDashboard adminName={user.name!} adminRole={user.adminRole} onLogout={handleLogout} />
-        ) : (
-          <StudentDashboard 
-            studentName={user.name!} 
-            rollNo={user.rollNo!}
-            studentId={user.id!}
-            branchId={user.branchId}
-            onLogout={handleLogout} 
-          />
-        )}
-        
-        {/* Chatbot - Always at root level for proper mobile positioning */}
-        {user.role && <Chatbot />}
-        
-        <Toaster />
-      </TooltipProvider>
+      <ActiveProvider>
+        <TooltipProvider>
+          <AnimatePresence mode="wait">
+            {user.role && <Chatbot />}
+            <motion.div
+              key={location}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+              className="min-h-screen"
+            >
+              <Switch location={location}>
+                {/* Secret Super Admin Route */}
+                <Route path="/Knsgp2023-admin">
+                  {!user.role ? (
+                    <SuperAdminLogin onLogin={handleLogin} />
+                  ) : user.role === 'admin' && user.adminRole === 'super_admin' ? (
+                    <AdminDashboard 
+                      adminName={user.name!} 
+                      adminRole={user.adminRole} 
+                      onLogout={handleLogout} 
+                      initialSection="admins" 
+                      isSecretRoute={true}
+                    />
+                  ) : (
+                    <NotFound />
+                  )}
+                </Route>
+
+                {/* Default Route - Fallback for all other paths */}
+                <Route>
+                  {!user.role ? (
+                    <LoginPage onLogin={handleLogin} />
+                  ) : user.role === 'admin' ? (
+                    <AdminDashboard adminName={user.name!} adminRole={user.adminRole} onLogout={handleLogout} />
+                  ) : (
+                    <StudentDashboard 
+                      studentName={user.name!} 
+                      rollNo={user.rollNo!}
+                      studentId={user.id!}
+                      branchId={user.branchId}
+                      onLogout={handleLogout} 
+                    />
+                  )}
+                </Route>
+              </Switch>
+            </motion.div>
+          </AnimatePresence>
+          <Toaster />
+        </TooltipProvider>
+      </ActiveProvider>
     </QueryClientProvider>
   );
 }

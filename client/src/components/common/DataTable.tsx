@@ -126,7 +126,7 @@ export default function DataTable({
       <CardContent className="flex-1 flex flex-col min-h-0">
         <div 
           ref={parentRef} 
-          className="overflow-auto border rounded-md"
+          className="w-full overflow-auto border rounded-md"
           style={{ height: enableVirtualization ? '100%' : 'auto', maxHeight: enableVirtualization ? 'none' : 'auto' }}
         >
           <Table>

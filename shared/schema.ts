@@ -263,3 +263,69 @@ export const insertBranchSchema = createInsertSchema(branches).omit({
 
 export type InsertBranch = z.infer<typeof insertBranchSchema>;
 export type Branch = typeof branches.$inferSelect;
+
+// Daily Attendance table (Calendar System)
+export const dailyAttendance = pgTable("daily_attendance", {
+  id: serial("id").primaryKey(),
+  studentId: integer("student_id").notNull().references(() => students.id, { onDelete: 'cascade' }),
+  subjectId: integer("subject_id").notNull().references(() => subjects.id, { onDelete: 'cascade' }),
+  date: date("date").notNull(),
+  status: varchar("status", { length: 20 }).notNull(), // 'present', 'absent'
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => {
+  return {
+    studentDateIdx: index("daily_att_student_date_idx").on(table.studentId, table.date),
+    subjectDateIdx: index("daily_att_subject_date_idx").on(table.subjectId, table.date),
+  };
+});
+
+export const insertDailyAttendanceSchema = createInsertSchema(dailyAttendance).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertDailyAttendance = z.infer<typeof insertDailyAttendanceSchema>;
+export type DailyAttendance = typeof dailyAttendance.$inferSelect;
+
+// Exams/Tests Definitions
+export const exams = pgTable("exams", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  subjectId: integer("subject_id").notNull().references(() => subjects.id, { onDelete: 'cascade' }),
+  totalMarks: real("total_marks").notNull(),
+  date: date("date").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => {
+  return {
+    subjectIdx: index("exam_subject_idx").on(table.subjectId),
+  };
+});
+
+export const insertExamSchema = createInsertSchema(exams).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertExam = z.infer<typeof insertExamSchema>;
+export type Exam = typeof exams.$inferSelect;
+
+// Exam Marks (Linked to Exams table)
+export const examMarks = pgTable("exam_marks", {
+  id: serial("id").primaryKey(),
+  examId: integer("exam_id").notNull().references(() => exams.id, { onDelete: 'cascade' }),
+  studentId: integer("student_id").notNull().references(() => students.id, { onDelete: 'cascade' }),
+  marksObtained: real("marks_obtained").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => {
+  return {
+    examStudentIdx: index("exam_marks_exam_student_idx").on(table.examId, table.studentId),
+  };
+});
+
+export const insertExamMarksSchema = createInsertSchema(examMarks).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertExamMarks = z.infer<typeof insertExamMarksSchema>;
+export type ExamMarks = typeof examMarks.$inferSelect;

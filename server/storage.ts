@@ -6,33 +6,42 @@ import {
   attendance, 
   marks, 
   libraryBooks, 
-  bookIssues,
-  notices,
-  auditLogs,
-  batches,
-  branches,
-  type Student,
-  type Admin,
-  type Subject,
-  type Attendance,
-  type Marks,
-  type LibraryBook,
-  type BookIssue,
-  type Notice,
-  type AuditLog,
-  type InsertStudent,
-  type InsertAdmin,
-  type InsertSubject,
-  type InsertAttendance,
-  type InsertMarks,
-  type InsertLibraryBook,
-  type InsertBookIssue,
-  type InsertNotice,
-  type InsertAuditLog,
-  type Batch,
-  type InsertBatch,
-  type Branch,
-  type InsertBranch
+  bookIssues, 
+  notices, 
+  auditLogs, 
+  batches, 
+  branches, 
+  dailyAttendance, 
+  exams, 
+  examMarks, 
+  type Student, 
+  type Admin, 
+  type Subject, 
+  type Attendance, 
+  type Marks, 
+  type LibraryBook, 
+  type BookIssue, 
+  type Notice, 
+  type AuditLog, 
+  type InsertStudent, 
+  type InsertAdmin, 
+  type InsertSubject, 
+  type InsertAttendance, 
+  type InsertMarks, 
+  type InsertLibraryBook, 
+  type InsertBookIssue, 
+  type InsertNotice, 
+  type InsertAuditLog, 
+  type Batch, 
+  type InsertBatch, 
+  type Branch, 
+  type InsertBranch, 
+  type DailyAttendance, 
+  type InsertDailyAttendance, 
+  type Exam, 
+  type InsertExam, 
+  type ExamMarks, 
+  type InsertExamMarks
 } from "@shared/schema";
 import { eq, and, desc, asc, sql, inArray, ilike, or, isNull } from "drizzle-orm";
 
@@ -44,7 +53,7 @@ export interface IStorage {
   }>;
   // Students
   getStudentByRollNo(rollNo: string): Promise<Student | undefined>;
-  getAllStudents(limit?: number, offset?: number, department?: string): Promise<{ data: Student[], total: number }>;
+  getAllStudents(limit?: number, offset?: number, search?: string, department?: string, branchId?: number, batchId?: number): Promise<{ data: Student[], total: number }>;
   getStudentsByIds(ids: number[]): Promise<Student[]>;
   createStudent(student: InsertStudent): Promise<Student>;
   updateStudent(id: number, student: Partial<InsertStudent>): Promise<Student | undefined>;
@@ -61,10 +70,10 @@ export interface IStorage {
 
   // Audit Logs
   createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
-  getAllAuditLogs(): Promise<AuditLog[]>;
+  getAllAuditLogs(limit?: number, offset?: number): Promise<AuditLog[]>;
 
   // Subjects
-  getAllSubjects(department?: string): Promise<Subject[]>;
+  getAllSubjects(department?: string, branchId?: number, batchId?: number): Promise<Subject[]>;
   getSubjectById(id: number): Promise<Subject | undefined>;
   createSubject(subject: InsertSubject): Promise<Subject>;
   updateSubject(id: number, subject: Partial<InsertSubject>): Promise<Subject | undefined>;
@@ -72,7 +81,7 @@ export interface IStorage {
 
   // Attendance
   getAttendanceByStudent(studentId: number): Promise<Attendance[]>;
-  getAllAttendance(limit?: number, offset?: number, search?: string, department?: string): Promise<{ data: (Attendance & { student: Student })[], total: number }>;
+  getAllAttendance(limit?: number, offset?: number, search?: string, department?: string, branchId?: number, batchId?: number): Promise<{ data: (Attendance & { student: Student })[], total: number }>;
   createAttendance(attendanceRecord: InsertAttendance): Promise<Attendance>;
   createAttendanceBatch(attendanceRecords: (InsertAttendance & { percentage: number; status: string })[]): Promise<Attendance[]>;
   updateAttendance(id: number, attendanceRecord: Partial<InsertAttendance>): Promise<Attendance | undefined>;
@@ -80,7 +89,7 @@ export interface IStorage {
 
   // Marks
   getMarksByStudent(studentId: number): Promise<Marks[]>;
-  getAllMarks(limit?: number, offset?: number, search?: string, department?: string): Promise<{ data: (Marks & { student: Student })[], total: number }>;
+  getAllMarks(limit?: number, offset?: number, search?: string, department?: string, branchId?: number, batchId?: number): Promise<{ data: (Marks & { student: Student })[], total: number }>;
   createMarks(marksRecord: InsertMarks): Promise<Marks>;
   createMarksBatch(marksRecords: (InsertMarks & { percentage: number; grade: string })[]): Promise<Marks[]>;
   updateMarks(id: number, marksRecord: Partial<InsertMarks>): Promise<Marks | undefined>;
@@ -123,42 +132,160 @@ export interface IStorage {
   deleteBatch(id: number): Promise<boolean>;
 
   // Branches
+  getAllBranches(): Promise<Branch[]>;
   getBranchesByBatch(batchId: number): Promise<Branch[]>;
   getBranchById(id: number): Promise<Branch | undefined>;
   createBranch(branch: InsertBranch): Promise<Branch>;
   updateBranch(id: number, branch: Partial<InsertBranch>): Promise<Branch | undefined>;
   deleteBranch(id: number): Promise<boolean>;
+
+  // Daily Attendance (Calendar System)
+  getDailyAttendance(date: string, subjectId: number): Promise<DailyAttendance[]>;
+  markDailyAttendance(records: InsertDailyAttendance[]): Promise<DailyAttendance[]>;
+
+  // Exams & Marks
+  createExam(exam: InsertExam): Promise<Exam>;
+  getExamsBySubject(subjectId: number): Promise<Exam[]>;
+  deleteExam(id: number): Promise<boolean>;
+  getExamById(id: number): Promise<Exam | undefined>;
+  saveExamMarks(records: InsertExamMarks[]): Promise<ExamMarks[]>;
+  getExamMarks(examId: number): Promise<ExamMarks[]>;
 }
 
 export class DatabaseStorage implements IStorage {
+  // ... existing methods ...
+
+  // Daily Attendance
+  async getDailyAttendance(dateStr: string, subjectId: number): Promise<DailyAttendance[]> {
+    console.log(`[Storage] getDailyAttendance date=${dateStr} subjectId=${subjectId}`);
+    // Order by ID desc to ensure we get the latest record if duplicates exist
+    const records = await db.select().from(dailyAttendance).where(and(
+      eq(dailyAttendance.date, dateStr),
+      eq(dailyAttendance.subjectId, subjectId)
+    )).orderBy(desc(dailyAttendance.id));
+    console.log(`[Storage] Found ${records.length} records`);
+    return records;
+  }
+
+  async markDailyAttendance(records: InsertDailyAttendance[]): Promise<DailyAttendance[]> {
+    console.log(`[Storage] markDailyAttendance: Saving ${records.length} records`);
+    return await db.transaction(async (tx) => {
+      const results: DailyAttendance[] = [];
+      for (const record of records) {
+        // Ensure date is treated consistently
+        // We use the string representation to match DB
+        const dateStr = typeof record.date === 'string' ? record.date : new Date(record.date).toISOString().split('T')[0];
+
+        // Robust Upsert: Delete any existing records for this student/subject/date first
+        // This handles potential duplicates from previous bugs and ensures a clean state
+        await tx.delete(dailyAttendance).where(and(
+          eq(dailyAttendance.studentId, record.studentId),
+          eq(dailyAttendance.subjectId, record.subjectId),
+          eq(dailyAttendance.date, dateStr)
+        ));
+
+        // Insert the new record with lowercased status
+        const [inserted] = await tx.insert(dailyAttendance).values({
+          ...record,
+          date: dateStr, // Ensure we save the standardized string
+          status: record.status.toLowerCase()
+        }).returning();
+        results.push(inserted);
+      }
+      return results;
+    });
+  }
+
+  // Exams
+  async createExam(exam: InsertExam): Promise<Exam> {
+    const result = await db.insert(exams).values(exam).returning();
+    return result[0];
+  }
+
+  async getExamsBySubject(subjectId: number): Promise<Exam[]> {
+    return await db.select().from(exams).where(eq(exams.subjectId, subjectId)).orderBy(desc(exams.date));
+  }
+
+  async deleteExam(id: number): Promise<boolean> {
+    const result = await db.delete(exams).where(eq(exams.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async getExamById(id: number): Promise<Exam | undefined> {
+    const result = await db.select().from(exams).where(eq(exams.id, id));
+    return result[0];
+  }
+
+  // Exam Marks
+  async saveExamMarks(records: InsertExamMarks[]): Promise<ExamMarks[]> {
+    return await db.transaction(async (tx) => {
+      const results: ExamMarks[] = [];
+      for (const record of records) {
+        const existing = await tx.select().from(examMarks).where(and(
+          eq(examMarks.examId, record.examId),
+          eq(examMarks.studentId, record.studentId)
+        ));
+
+        if (existing.length > 0) {
+          const [updated] = await tx.update(examMarks)
+            .set({ marksObtained: record.marksObtained })
+            .where(eq(examMarks.id, existing[0].id))
+            .returning();
+          results.push(updated);
+        } else {
+          const [inserted] = await tx.insert(examMarks).values(record).returning();
+          results.push(inserted);
+        }
+      }
+      return results;
+    });
+  }
+
+  async getExamMarks(examId: number): Promise<ExamMarks[]> {
+    return await db.select().from(examMarks).where(eq(examMarks.examId, examId));
+  }
+
   // Students
   async getStudentStats(studentIds?: number[]) {
+    // Attendance Stats (Daily)
+    // Percentage = (Count of 'present' / Total Count) * 100
+    // Grouped by studentId
     const attendanceQuery = db.select({
-      studentId: attendance.studentId,
-      avgPercentage: sql<number>`avg(${attendance.percentage})`
+      studentId: dailyAttendance.studentId,
+      total: sql<number>`count(*)`,
+      present: sql<number>`count(*) filter (where lower(${dailyAttendance.status}) = 'present')`
     })
-    .from(attendance)
-    .groupBy(attendance.studentId);
+    .from(dailyAttendance)
+    .groupBy(dailyAttendance.studentId);
     
     if (studentIds && studentIds.length > 0) {
-      attendanceQuery.where(inArray(attendance.studentId, studentIds));
+      attendanceQuery.where(inArray(dailyAttendance.studentId, studentIds));
     }
     
-    const attendanceStats = await attendanceQuery;
+    const attendanceStatsRaw = await attendanceQuery;
+    const attendanceStats = attendanceStatsRaw.map(stat => ({
+      studentId: stat.studentId,
+      avgPercentage: stat.total > 0 ? (stat.present / stat.total) * 100 : 0
+    }));
 
+    // Marks Stats (Exams)
+    // Avg Percentage = Avg( (marksObtained / totalMarks) * 100 )
+    // We need to join examMarks with exams to get totalMarks
     const marksQuery = db.select({
-      studentId: marks.studentId,
-      avgPercentage: sql<number>`avg(${marks.percentage})`
+      studentId: examMarks.studentId,
+      avgPercentage: sql<number>`avg((${examMarks.marksObtained} / ${exams.totalMarks}) * 100)`
     })
-    .from(marks)
-    .groupBy(marks.studentId);
+    .from(examMarks)
+    .innerJoin(exams, eq(examMarks.examId, exams.id))
+    .groupBy(examMarks.studentId);
     
     if (studentIds && studentIds.length > 0) {
-      marksQuery.where(inArray(marks.studentId, studentIds));
+      marksQuery.where(inArray(examMarks.studentId, studentIds));
     }
     
     const marksStats = await marksQuery;
 
+    // Issue Stats (Library)
     const issueQuery = db.select({
       studentId: bookIssues.studentId,
       count: sql<number>`count(*)`
@@ -182,29 +309,73 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async getAllStudents(limit?: number, offset?: number, department?: string, branchId?: number): Promise<{ data: Student[], total: number }> {
+  async getAllStudents(limit?: number, offset?: number, search?: string, department?: string, branchId?: number, batchId?: number): Promise<{ data: (Student & { avgMarks: number, attendancePercentage: number })[], total: number }> {
     // Sort by length of rollNo first (to group single digits, double digits, etc.), then by value
     // This fixes the issue where '100' comes before '29' in standard string sort
-    const query = db.select().from(students).orderBy(
+    let query = db.select({
+      student: students
+    })
+    .from(students)
+    .leftJoin(branches, eq(students.branchId, branches.id))
+    .orderBy(
       sql`length(${students.rollNo}) asc`,
       asc(students.rollNo)
     );
     
+    const conditions = [];
+
+    if (search) {
+      const searchLower = `%${search.toLowerCase()}%`;
+      conditions.push(or(
+        ilike(students.name, searchLower),
+        ilike(students.rollNo, searchLower)
+      ));
+    }
+
     if (branchId) {
-      query.where(eq(students.branchId, branchId));
-    } else if (department) {
-      query.where(eq(students.department, department));
+      conditions.push(eq(students.branchId, branchId));
+    } else if (batchId) {
+      // If branchId is not provided but batchId is, filter by batch via the joined branches table
+      conditions.push(eq(branches.batchId, batchId));
+    }
+    
+    if (department) {
+      conditions.push(eq(students.department, department));
+    }
+    
+    if (conditions.length > 0) {
+      query.where(and(...conditions));
     }
     
     if (limit !== undefined && offset !== undefined) {
       query.limit(limit).offset(offset);
     }
-    const data = await query;
-    const totalQuery = db.select({ count: sql<number>`count(*)` }).from(students);
-    if (branchId) {
-      totalQuery.where(eq(students.branchId, branchId));
-    } else if (department) {
-      totalQuery.where(eq(students.department, department));
+    const results = await query;
+    const rawData = results.map(r => r.student);
+
+    // Populate Stats (Avg Marks & Attendance)
+    const studentIds = rawData.map(s => s.id);
+    let data = rawData.map(s => ({ ...s, avgMarks: 0, attendancePercentage: 0 }));
+
+    if (studentIds.length > 0) {
+      const stats = await this.getStudentStats(studentIds);
+      
+      const attMap = new Map(stats.attendanceStats.map(s => [s.studentId, s.avgPercentage]));
+      const marksMap = new Map(stats.marksStats.map(s => [s.studentId, s.avgPercentage]));
+      
+      data = rawData.map(s => ({
+        ...s,
+        avgMarks: Number(marksMap.get(s.id) || 0),
+        attendancePercentage: Number(attMap.get(s.id) || 0)
+      }));
+    }
+
+    const totalQuery = db.select({ count: sql<number>`count(*)` })
+      .from(students)
+      .leftJoin(branches, eq(students.branchId, branches.id));
+
+    if (conditions.length > 0) {
+      totalQuery.where(and(...conditions));
     }
     const totalResult = await totalQuery;
     return { data, total: Number(totalResult[0].count) };
@@ -285,19 +456,43 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async getAllAuditLogs(): Promise<AuditLog[]> {
-    return await db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt));
+  async getAllAuditLogs(limit?: number, offset?: number): Promise<AuditLog[]> {
+    let query = db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt));
+    
+    if (limit !== undefined && offset !== undefined) {
+      query.limit(limit).offset(offset);
+    }
+    
+    return await query;
   }
 
   // Subjects
-  async getAllSubjects(department?: string, branchId?: number): Promise<Subject[]> {
-    const query = db.select().from(subjects).orderBy(asc(subjects.id));
+  async getAllSubjects(department?: string, branchId?: number, batchId?: number): Promise<Subject[]> {
+    const query = db.select({
+      subject: subjects
+    })
+    .from(subjects)
+    .leftJoin(branches, eq(subjects.branchId, branches.id))
+    .orderBy(asc(subjects.id));
+
+    const conditions = [];
+
     if (branchId) {
-      query.where(eq(subjects.branchId, branchId));
-    } else if (department) {
-      query.where(eq(subjects.department, department));
+      conditions.push(eq(subjects.branchId, branchId));
+    } else if (batchId) {
+      conditions.push(eq(branches.batchId, batchId));
     }
-    return await query;
+
+    if (department) {
+      conditions.push(eq(subjects.department, department));
+    }
+
+    if (conditions.length > 0) {
+      query.where(and(...conditions));
+    }
+
+    const results = await query;
+    return results.map(r => r.subject);
   }
 
   async getSubjectById(id: number): Promise<Subject | undefined> {
@@ -322,66 +517,112 @@ export class DatabaseStorage implements IStorage {
 
   // Attendance
   async getAttendanceByStudent(studentId: number): Promise<Attendance[]> {
-    return await db.select().from(attendance).where(eq(attendance.studentId, studentId)).orderBy(desc(attendance.month));
+    // Aggregate dailyAttendance to match the legacy Attendance format
+    const query = db.select({
+       subjectId: dailyAttendance.subjectId,
+       month: sql<string>`to_char(${dailyAttendance.date}, 'YYYY-MM')`,
+       totalDays: sql<number>`count(*)::int`,
+       presentDays: sql<number>`count(*) filter (where lower(${dailyAttendance.status}) = 'present')::int`,
+    })
+    .from(dailyAttendance)
+    .where(eq(dailyAttendance.studentId, studentId))
+    .groupBy(dailyAttendance.subjectId, sql`to_char(${dailyAttendance.date}, 'YYYY-MM')`)
+    .orderBy(desc(sql`to_char(${dailyAttendance.date}, 'YYYY-MM')`));
+
+    const results = await query;
+
+    // Transform to Attendance interface
+    return results.map((row, index) => {
+        const percentage = row.totalDays > 0 ? (row.presentDays / row.totalDays) * 100 : 0;
+        let status = 'Poor';
+        if (percentage >= 80) status = 'Good';
+        else if (percentage >= 60) status = 'Average';
+
+        return {
+            id: index + 1, // Dummy ID
+            studentId: studentId,
+            subjectId: row.subjectId,
+            month: row.month,
+            totalDays: row.totalDays,
+            presentDays: row.presentDays,
+            percentage,
+            status,
+            createdAt: new Date()
+        };
+    });
   }
 
-  async getAllAttendance(limit?: number, offset?: number, search?: string, department?: string, branchId?: number): Promise<{ data: (Attendance & { student: Student })[], total: number }> {
-    let query = db.select()
-    .from(attendance)
-    .innerJoin(students, eq(attendance.studentId, students.id))
-    .orderBy(asc(students.rollNo), desc(attendance.month));
+  async getAllAttendance(limit?: number, offset?: number, search?: string, department?: string, branchId?: number, batchId?: number): Promise<{ data: (Attendance & { student: Student })[], total: number }> {
+    // Aggregating dailyAttendance to match the legacy Attendance format
+    const query = db.select({
+       studentId: dailyAttendance.studentId,
+       subjectId: dailyAttendance.subjectId,
+       month: sql<string>`to_char(${dailyAttendance.date}, 'YYYY-MM')`,
+       totalDays: sql<number>`count(*)::int`,
+       presentDays: sql<number>`count(*) filter (where lower(${dailyAttendance.status}) = 'present')::int`,
+       // Selecting student fields
+       student: {
+           id: students.id,
+           rollNo: students.rollNo,
+           name: students.name,
+           department: students.department,
+           branchId: students.branchId,
+           semester: students.semester,
+       }
+    })
+    .from(dailyAttendance)
+    .innerJoin(students, eq(dailyAttendance.studentId, students.id))
+    .leftJoin(branches, eq(students.branchId, branches.id))
+    .groupBy(dailyAttendance.studentId, dailyAttendance.subjectId, sql`to_char(${dailyAttendance.date}, 'YYYY-MM')`, students.id);
 
+    // Filters
+    const conditions = [];
     if (search) {
       const searchLower = `%${search.toLowerCase()}%`;
-      query.where(
-        or(
-          ilike(students.name, searchLower),
-          ilike(students.rollNo, searchLower),
-          ilike(attendance.month, searchLower)
-        )
-      );
+      conditions.push(or(
+        ilike(students.name, searchLower),
+        ilike(students.rollNo, searchLower),
+        sql`to_char(${dailyAttendance.date}, 'YYYY-MM') ILIKE ${searchLower}`
+      ));
     }
-    if (branchId) {
-      query.where(eq(students.branchId, branchId));
-    } else if (department) {
-      query.where(eq(students.department, department));
-    }
-
-    if (limit !== undefined && offset !== undefined) {
-      query.limit(limit).offset(offset);
-    }
+    if (branchId) conditions.push(eq(students.branchId, branchId));
+    else if (batchId) conditions.push(eq(branches.batchId, batchId));
+    if (department) conditions.push(eq(students.department, department));
     
-    // Execute query and map result to expected format
+    if (conditions.length > 0) query.where(and(...conditions));
+
+    // Order, Limit, Offset
+    query.orderBy(desc(sql`to_char(${dailyAttendance.date}, 'YYYY-MM')`));
+    
+    if (limit) query.limit(limit);
+    if (offset) query.offset(offset);
+
     const results = await query;
-    const data = results.map(row => ({
-      ...row.attendance,
-      student: row.students
+
+    // Transform
+    const data = await Promise.all(results.map(async row => {
+        const percentage = row.totalDays > 0 ? (row.presentDays / row.totalDays) * 100 : 0;
+        let status = 'Poor';
+        if (percentage >= 80) status = 'Good';
+        else if (percentage >= 60) status = 'Average';
+
+        const studentObj = await db.select().from(students).where(eq(students.id, row.studentId)).then(res => res[0]);
+
+        return {
+            id: 0, // Dummy ID
+            studentId: row.studentId,
+            subjectId: row.subjectId,
+            month: row.month,
+            totalDays: row.totalDays,
+            presentDays: row.presentDays,
+            percentage,
+            status,
+            createdAt: new Date(),
+            student: studentObj || { id: row.studentId } as any // Fallback
+        };
     }));
     
-    // Count query for pagination
-    const countQuery = db.select({ count: sql<number>`count(*)` })
-      .from(attendance)
-      .innerJoin(students, eq(attendance.studentId, students.id));
-
-    if (search) {
-      const searchLower = `%${search.toLowerCase()}%`;
-      countQuery.where(
-        or(
-          ilike(students.name, searchLower),
-          ilike(students.rollNo, searchLower),
-          ilike(attendance.month, searchLower)
-        )
-      );
-    }
-    if (branchId) {
-      countQuery.where(eq(students.branchId, branchId));
-    } else if (department) {
-      countQuery.where(eq(students.department, department));
-    }
-    
-    const totalResult = await countQuery;
-    
-    return { data: data as any, total: Number(totalResult[0].count) };
+    return { data: data as any, total: data.length };
   }
 
   async createAttendance(attendanceRecord: any): Promise<Attendance> {
@@ -412,65 +653,122 @@ export class DatabaseStorage implements IStorage {
 
   // Marks
   async getMarksByStudent(studentId: number): Promise<Marks[]> {
-    return await db.select().from(marks).where(eq(marks.studentId, studentId));
+    const query = db.select({
+       id: examMarks.id,
+       marksObtained: examMarks.marksObtained,
+       // Joined fields
+       examName: exams.name,
+       totalMarks: exams.totalMarks,
+       examDate: exams.date,
+       subjectId: exams.subjectId,
+    })
+    .from(examMarks)
+    .innerJoin(exams, eq(examMarks.examId, exams.id))
+    .where(eq(examMarks.studentId, studentId))
+    .orderBy(desc(exams.date));
+
+    const results = await query;
+    
+    return results.map(row => {
+        const percentage = row.totalMarks > 0 ? (row.marksObtained / row.totalMarks) * 100 : 0;
+        let grade = 'F';
+        if (percentage >= 90) grade = 'A+';
+        else if (percentage >= 80) grade = 'A';
+        else if (percentage >= 70) grade = 'B';
+        else if (percentage >= 60) grade = 'C';
+        else if (percentage >= 50) grade = 'D';
+
+        return {
+            id: row.id,
+            studentId: studentId,
+            subjectId: row.subjectId,
+            month: row.examDate ? row.examDate.substring(0, 7) : '2023-01',
+            testName: row.examName,
+            marksObtained: row.marksObtained,
+            totalMarks: row.totalMarks,
+            percentage,
+            grade,
+            createdAt: new Date()
+        };
+    });
   }
 
-  async getAllMarks(limit?: number, offset?: number, search?: string, department?: string, branchId?: number): Promise<{ data: (Marks & { student: Student })[], total: number }> {
-    let query = db.select()
-    .from(marks)
-    .innerJoin(students, eq(marks.studentId, students.id))
-    .orderBy(asc(students.rollNo), desc(marks.month));
+  async getAllMarks(limit?: number, offset?: number, search?: string, department?: string, branchId?: number, batchId?: number): Promise<{ data: (Marks & { student: Student })[], total: number }> {
+    const query = db.select({
+       id: examMarks.id,
+       studentId: examMarks.studentId,
+       marksObtained: examMarks.marksObtained,
+       // Joined fields
+       examName: exams.name,
+       totalMarks: exams.totalMarks,
+       examDate: exams.date,
+       subjectId: exams.subjectId,
+       // Student
+       student: {
+           id: students.id,
+           rollNo: students.rollNo,
+           name: students.name,
+           department: students.department,
+           branchId: students.branchId,
+           semester: students.semester,
+       }
+    })
+    .from(examMarks)
+    .innerJoin(exams, eq(examMarks.examId, exams.id))
+    .innerJoin(students, eq(examMarks.studentId, students.id))
+    .leftJoin(branches, eq(students.branchId, branches.id));
 
+    const conditions = [];
     if (search) {
       const searchLower = `%${search.toLowerCase()}%`;
-      query.where(
-        or(
-          ilike(students.name, searchLower),
-          ilike(students.rollNo, searchLower),
-          ilike(marks.testName, searchLower)
-        )
-      );
+      conditions.push(or(
+        ilike(students.name, searchLower),
+        ilike(students.rollNo, searchLower),
+        ilike(exams.name, searchLower)
+      ));
     }
-    if (branchId) {
-      query.where(eq(students.branchId, branchId));
-    } else if (department) {
-      query.where(eq(students.department, department));
-    }
+    if (branchId) conditions.push(eq(students.branchId, branchId));
+    else if (batchId) conditions.push(eq(branches.batchId, batchId));
+    if (department) conditions.push(eq(students.department, department));
 
-    if (limit !== undefined && offset !== undefined) {
-      query.limit(limit).offset(offset);
-    }
+    if (conditions.length > 0) query.where(and(...conditions));
     
-    // Execute query and map result to expected format
+    // Order, Limit
+    query.orderBy(desc(exams.date));
+    
+    if (limit) query.limit(limit);
+    if (offset) query.offset(offset);
+
     const results = await query;
-    const data = results.map(row => ({
-      ...row.marks,
-      student: row.students
+    
+    // Transform
+    const data = await Promise.all(results.map(async row => {
+        const percentage = row.totalMarks > 0 ? (row.marksObtained / row.totalMarks) * 100 : 0;
+        let grade = 'F';
+        if (percentage >= 90) grade = 'A+';
+        else if (percentage >= 80) grade = 'A';
+        else if (percentage >= 70) grade = 'B';
+        else if (percentage >= 60) grade = 'C';
+        else if (percentage >= 50) grade = 'D';
+
+        const studentObj = await db.select().from(students).where(eq(students.id, row.studentId)).then(res => res[0]);
+
+        return {
+            id: row.id,
+            studentId: row.studentId,
+            subjectId: row.subjectId,
+            month: row.examDate ? row.examDate.substring(0, 7) : '2023-01',
+            testName: row.examName,
+            marksObtained: row.marksObtained,
+            totalMarks: row.totalMarks,
+            percentage,
+            grade,
+            createdAt: new Date(),
+            student: studentObj || { id: row.studentId } as any
+        };
     }));
-    
-    // Count query for pagination
-    const countQuery = db.select({ count: sql<number>`count(*)` })
-      .from(marks)
-      .innerJoin(students, eq(marks.studentId, students.id));
-      
-    if (search) {
-      const searchLower = `%${search.toLowerCase()}%`;
-      countQuery.where(
-        or(
-          ilike(students.name, searchLower),
-          ilike(students.rollNo, searchLower),
-          ilike(marks.testName, searchLower)
-        )
-      );
-    }
-    if (branchId) {
-      countQuery.where(eq(students.branchId, branchId));
-    } else if (department) {
-      countQuery.where(eq(students.department, department));
-    }
-    
-    const totalResult = await countQuery;
-    return { data: data as any, total: Number(totalResult[0].count) };
+
+    return { data: data as any, total: data.length };
   }
 
   async createMarks(marksRecord: any): Promise<Marks> {
@@ -500,13 +798,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Library Books
-  async getAllLibraryBooks(branchId?: number): Promise<LibraryBook[]> {
-    const query = db.select().from(libraryBooks).orderBy(asc(libraryBooks.id));
+  async getAllLibraryBooks(branchId?: number, batchId?: number): Promise<LibraryBook[]> {
+    let query = db.select({
+      book: libraryBooks
+    })
+    .from(libraryBooks)
+    .leftJoin(branches, eq(libraryBooks.branchId, branches.id));
+
+    const conditions = [];
     if (branchId) {
-      // Show books specific to the branch ONLY (User requested strict separation)
-      query.where(eq(libraryBooks.branchId, branchId));
+      conditions.push(eq(libraryBooks.branchId, branchId));
+    } else if (batchId) {
+      conditions.push(eq(branches.batchId, batchId));
     }
-    return await query;
+
+    if (conditions.length > 0) {
+      query.where(and(...conditions));
+    }
+
+    const results = await query;
+    return results.map(r => r.book);
   }
 
   async getLibraryBookById(id: number): Promise<LibraryBook | undefined> {
@@ -629,7 +940,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Notices
-  async getAllNotices(branchId?: number): Promise<any[]> {
+  async getAllNotices(branchId?: number, batchId?: number): Promise<any[]> {
     const query = db.select({
       id: notices.id,
       title: notices.title,
@@ -643,10 +954,15 @@ export class DatabaseStorage implements IStorage {
     .leftJoin(branches, eq(notices.branchId, branches.id))
     .orderBy(desc(notices.createdAt));
     
+    const conditions = [];
     if (branchId) {
-      // If a branchId is provided, ONLY return notices for that branch.
-      // Do NOT include global notices (where branchId is null).
-      query.where(eq(notices.branchId, branchId));
+      conditions.push(eq(notices.branchId, branchId));
+    } else if (batchId) {
+      conditions.push(eq(branches.batchId, batchId));
+    }
+    
+    if (conditions.length > 0) {
+      query.where(and(...conditions));
     }
     return await query;
   }
@@ -672,46 +988,162 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Analytics
-  async getGlobalStats(branchId?: number) {
+  async getGlobalStats(branchId?: number, batchId?: number) {
     // 1. Students count
-    const studentCountQuery = db.select({ count: sql<number>`count(*)` }).from(students);
+    const studentCountQuery = db.select({ count: sql<number>`count(*)` })
+      .from(students)
+      .leftJoin(branches, eq(students.branchId, branches.id));
+      
+    const conditions = [];
+    
     if (branchId) {
-      studentCountQuery.where(eq(students.branchId, branchId));
+      conditions.push(eq(students.branchId, branchId));
+    } else if (batchId) {
+      conditions.push(eq(branches.batchId, batchId));
     }
+    
+    if (conditions.length > 0) {
+      studentCountQuery.where(and(...conditions));
+    }
+    
     const [studentCount] = await studentCountQuery;
+    const totalStudents = Number(studentCount?.count || 0);
+    console.log(`[Storage] getGlobalStats: totalStudents=${totalStudents} branchId=${branchId}`);
+
+    // If no students, return 0 for everything to prevent ghost data
+    if (totalStudents === 0) {
+      return {
+        totalStudents: 0,
+        avgAttendance: 0,
+        avgMarks: 0,
+        totalBooksIssued: 0
+      };
+    }
 
     // 2. Attendance Average
-    const attendanceAvgQuery = db.select({ avg: sql<number>`avg(${attendance.percentage})` }).from(attendance);
-    if (branchId) {
-      attendanceAvgQuery.innerJoin(students, eq(attendance.studentId, students.id))
-        .where(eq(students.branchId, branchId));
+    const attendanceStatsQuery = db.select({
+      total: sql<number>`count(*)`,
+      present: sql<number>`count(*) filter (where lower(${dailyAttendance.status}) = 'present')`
+    }).from(dailyAttendance);
+    
+    // We need to join students and branches to filter
+    attendanceStatsQuery.innerJoin(students, eq(dailyAttendance.studentId, students.id))
+      .leftJoin(branches, eq(students.branchId, branches.id));
+      
+    if (conditions.length > 0) {
+      attendanceStatsQuery.where(and(...conditions));
     }
-    const [attendanceAvg] = await attendanceAvgQuery;
+    
+    const [attendanceStats] = await attendanceStatsQuery;
+    console.log(`[Storage] getGlobalStats: attendanceStats=`, attendanceStats);
+    
+    const avgAttendance = attendanceStats && attendanceStats.total > 0 
+      ? (attendanceStats.present / attendanceStats.total) * 100 
+      : 0;
 
     // 3. Marks Average
-    const marksAvgQuery = db.select({ avg: sql<number>`avg(${marks.percentage})` }).from(marks);
-    if (branchId) {
-      marksAvgQuery.innerJoin(students, eq(marks.studentId, students.id))
-        .where(eq(students.branchId, branchId));
+    const marksAvgQuery = db.select({ 
+      avg: sql<number>`avg((${examMarks.marksObtained} / ${exams.totalMarks}) * 100)` 
+    })
+    .from(examMarks)
+    .innerJoin(exams, eq(examMarks.examId, exams.id))
+    .innerJoin(students, eq(examMarks.studentId, students.id))
+    .leftJoin(branches, eq(students.branchId, branches.id));
+
+    if (conditions.length > 0) {
+      marksAvgQuery.where(and(...conditions));
     }
+    
     const [marksAvg] = await marksAvgQuery;
 
     // 4. Books Issued Count
     const issuedCountQuery = db.select({ count: sql<number>`count(*)` }).from(bookIssues);
-    if (branchId) {
-      issuedCountQuery.innerJoin(students, eq(bookIssues.studentId, students.id))
-        .where(and(eq(bookIssues.status, 'issued'), eq(students.branchId, branchId)));
-    } else {
-      issuedCountQuery.where(eq(bookIssues.status, 'issued'));
-    }
+    
+    issuedCountQuery.innerJoin(students, eq(bookIssues.studentId, students.id))
+      .leftJoin(branches, eq(students.branchId, branches.id));
+
+    const issueConditions = [...conditions, eq(bookIssues.status, 'issued')];
+    
+    issuedCountQuery.where(and(...issueConditions));
+    
     const [issuedCount] = await issuedCountQuery;
 
     return {
-      totalStudents: Number(studentCount?.count || 0),
-      avgAttendance: Number(attendanceAvg?.avg || 0),
+      totalStudents,
+      avgAttendance: Number(avgAttendance || 0),
       avgMarks: Number(marksAvg?.avg || 0),
       totalBooksIssued: Number(issuedCount?.count || 0)
     };
+  }
+
+  async getSubjectStats(branchId?: number, batchId?: number) {
+    // Query stats grouped by subjectId
+    
+    // 1. Attendance by Subject
+    const attendanceQuery = db.select({
+      subjectId: dailyAttendance.subjectId,
+      total: sql<number>`count(*)`,
+      present: sql<number>`count(*) filter (where lower(${dailyAttendance.status}) = 'present')`
+    })
+    .from(dailyAttendance)
+    .innerJoin(students, eq(dailyAttendance.studentId, students.id))
+    .leftJoin(branches, eq(students.branchId, branches.id))
+    .groupBy(dailyAttendance.subjectId);
+    
+    const attConditions = [];
+    if (branchId) attConditions.push(eq(students.branchId, branchId));
+    else if (batchId) attConditions.push(eq(branches.batchId, batchId));
+    if (attConditions.length > 0) attendanceQuery.where(and(...attConditions));
+    
+    const attendanceStats = await attendanceQuery;
+    const attMap = new Map();
+    attendanceStats.forEach(stat => {
+      const avg = stat.total > 0 ? (stat.present / stat.total) * 100 : 0;
+      attMap.set(stat.subjectId, avg);
+    });
+
+    // 2. Marks by Subject
+    const marksQuery = db.select({
+      subjectId: exams.subjectId,
+      avg: sql<number>`avg((${examMarks.marksObtained} / ${exams.totalMarks}) * 100)`
+    })
+    .from(examMarks)
+    .innerJoin(exams, eq(examMarks.examId, exams.id))
+    .innerJoin(students, eq(examMarks.studentId, students.id))
+    .leftJoin(branches, eq(students.branchId, branches.id))
+    .groupBy(exams.subjectId);
+    
+    const marksConditions = [];
+    if (branchId) marksConditions.push(eq(students.branchId, branchId));
+    else if (batchId) marksConditions.push(eq(branches.batchId, batchId));
+    if (marksConditions.length > 0) marksQuery.where(and(...marksConditions));
+    
+    const marksStats = await marksQuery;
+    const marksMap = new Map();
+    marksStats.forEach(stat => {
+      marksMap.set(stat.subjectId, Number(stat.avg || 0));
+    });
+
+    // 3. Get Subjects Details
+    // We need to fetch subjects that match the filter to ensure we show all subjects, even those with no stats
+    let subjQuery = db.select().from(subjects).leftJoin(branches, eq(subjects.branchId, branches.id));
+    const subjConditions = [];
+    if (branchId) subjConditions.push(eq(subjects.branchId, branchId));
+    else if (batchId) subjConditions.push(eq(branches.batchId, batchId));
+    if (subjConditions.length > 0) subjQuery.where(and(...subjConditions));
+    
+    const subjectsList = await subjQuery;
+    
+    return subjectsList.map(row => {
+      const s = row.subjects;
+      return {
+        id: s.id,
+        name: s.name,
+        code: s.code,
+        avgAttendance: attMap.get(s.id) || 0,
+        avgMarks: marksMap.get(s.id) || 0
+      };
+    });
   }
 
   async getAllBatches(): Promise<Batch[]> {
@@ -779,20 +1211,24 @@ export class DatabaseStorage implements IStorage {
       await tx.delete(bookIssues).where(inArray(bookIssues.bookId, bookIds));
     }
 
-    // 2. Delete Attendance
+    // 2. Delete Attendance (Both Legacy and New)
     if (studentIds.length > 0) {
       await tx.delete(attendance).where(inArray(attendance.studentId, studentIds));
+      await tx.delete(dailyAttendance).where(inArray(dailyAttendance.studentId, studentIds));
     }
     if (subjectIds.length > 0) {
       await tx.delete(attendance).where(inArray(attendance.subjectId, subjectIds));
+      await tx.delete(dailyAttendance).where(inArray(dailyAttendance.subjectId, subjectIds));
     }
 
-    // 3. Delete Marks
+    // 3. Delete Marks (Both Legacy and New)
     if (studentIds.length > 0) {
       await tx.delete(marks).where(inArray(marks.studentId, studentIds));
+      await tx.delete(examMarks).where(inArray(examMarks.studentId, studentIds));
     }
     if (subjectIds.length > 0) {
       await tx.delete(marks).where(inArray(marks.subjectId, subjectIds));
+      // examMarks doesn't have subjectId directly, it links to exams
     }
 
     // 4. Delete dependent Notices
@@ -808,6 +1244,10 @@ export class DatabaseStorage implements IStorage {
     await tx.delete(libraryBooks).where(eq(libraryBooks.branchId, branchId));
     
     console.log(`[Storage] Cleanup complete for branch ${branchId}`);
+  }
+
+  async getAllBranches(): Promise<Branch[]> {
+    return await db.select().from(branches).orderBy(asc(branches.name));
   }
 
   async getBranchesByBatch(batchId: number): Promise<Branch[]> {

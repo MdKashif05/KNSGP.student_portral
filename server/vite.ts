@@ -31,13 +31,14 @@ export async function setupVite(app: Express, server: Server) {
       ...viteLogger,
       error: (msg, options) => {
         viteLogger.error(msg, options);
-        process.exit(1);
+        // Don't exit process - let the server continue running
       },
     },
     appType: "custom",
   });
 
   app.use(vite.middlewares);
+  app.use(express.static(path.resolve(import.meta.dirname, "..", "client", "public")));
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
 

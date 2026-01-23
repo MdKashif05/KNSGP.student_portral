@@ -14,6 +14,25 @@ import { LogOut } from "lucide-react";
 import { useState, useEffect } from "react";
 import ChangePasswordDialog from "@/components/dialogs/ChangePasswordDialog";
 
+// Isolated component for time display to prevent full dashboard re-renders
+function CurrentTimeDisplay() {
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <StatCard
+      title="Current Time"
+      value={currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+      icon={Clock}
+      description={currentTime.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+    />
+  );
+}
+
 interface StudentDashboardProps {
   studentName: string;
   rollNo: string;
@@ -26,12 +45,6 @@ export default function StudentDashboard({ studentName, rollNo, studentId, branc
   const [showChangePasswordDialog, setShowChangePasswordDialog] = useState(false);
   const [showNoticePopup, setShowNoticePopup] = useState(false);
   const [latestPopupNotice, setLatestPopupNotice] = useState<any>(null);
-  const [currentTime, setCurrentTime] = useState(new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   // Fetch student's attendance - cached with studentId for instant loading
   const { data: attendanceData = [], isLoading: isLoadingAttendance } = useQuery<any[]>({
@@ -218,7 +231,7 @@ export default function StudentDashboard({ studentName, rollNo, studentId, branc
     <div className="min-h-screen bg-background">
       {/* Notice Popup */}
       <Dialog open={showNoticePopup} onOpenChange={(open) => !open && handleCloseNoticePopup()}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-125">
           <DialogHeader>
             <div className="flex items-center gap-2">
               <Bell className="h-5 w-5 text-primary" />
@@ -285,15 +298,17 @@ export default function StudentDashboard({ studentName, rollNo, studentId, branc
         onOpenChange={setShowChangePasswordDialog} 
       />
 
-      <main className="p-6">
+      <main className="p-4 sm:p-6">
         <Tabs defaultValue="dashboard" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="dashboard" data-testid="tab-dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="attendance" data-testid="tab-attendance">Attendance</TabsTrigger>
-            <TabsTrigger value="marks" data-testid="tab-marks">Marks</TabsTrigger>
-            <TabsTrigger value="library" data-testid="tab-library">Library</TabsTrigger>
-            <TabsTrigger value="notices" data-testid="tab-notices">Notices</TabsTrigger>
-          </TabsList>
+          <div className="w-full overflow-x-auto pb-2 -mb-2">
+            <TabsList className="w-full justify-start inline-flex min-w-max sm:w-auto">
+              <TabsTrigger value="dashboard" data-testid="tab-dashboard">Dashboard</TabsTrigger>
+              <TabsTrigger value="attendance" data-testid="tab-attendance">Attendance</TabsTrigger>
+              <TabsTrigger value="marks" data-testid="tab-marks">Marks</TabsTrigger>
+              <TabsTrigger value="library" data-testid="tab-library">Library</TabsTrigger>
+              <TabsTrigger value="notices" data-testid="tab-notices">Notices</TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="dashboard" className="space-y-6">
             {isLoading ? (
@@ -330,12 +345,7 @@ export default function StudentDashboard({ studentName, rollNo, studentId, branc
                     value={avgMarks}
                     icon={Award}
                   />
-                  <StatCard
-                    title="Current Time"
-                    value={currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                    icon={Clock}
-                    description={currentTime.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
-                  />
+                  <CurrentTimeDisplay />
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
