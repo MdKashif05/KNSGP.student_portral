@@ -24,6 +24,7 @@ import {
   Shield
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import LogoWithFallback from "@/components/common/LogoWithFallback";
 
 interface AdminSidebarProps {
   activeItem?: string;
@@ -63,11 +64,12 @@ export default function AdminSidebar({ activeItem = "dashboard", onNavigate, onL
     <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border p-4">
         <div className="flex items-center gap-3">
-          <img
+          <LogoWithFallback
             src="/logo.jpeg?v=1"
             alt="KNSGP College Logo"
             className="h-12.5 w-12.5 rounded-lg object-contain"
-            data-testid="img-college-logo"
+            width={50}
+            height={50}
           />
           <div>
             <p className="text-sm font-semibold text-sidebar-foreground">KNSGP College</p>

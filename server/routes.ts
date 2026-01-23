@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { requireAuth, requireAdmin, requireSuperAdmin, requireStudent } from "./auth";
 import bcrypt from "bcryptjs";
+import { apiLimiter, authLimiter, chatbotLimiter } from "./middleware/rateLimiter";
 import { 
   insertStudentSchema,
   insertAdminSchema,
@@ -37,38 +38,119 @@ function calculateGrade(percentage: number): string {
   return 'F';
 }
 
+// Helper function to generate local responses when AI is unavailable
+function getLocalResponse(message: string): string {
+  const lowerMsg = message.toLowerCase();
+  
+  // Greetings & Identity
+  if (lowerMsg.match(/\b(hi+|hello+|hey+|greetings|good morning|good afternoon|good evening)\b/)) {
+    return "Hello! I'm Edumanage AI. How can I assist you with your college activities today?";
+  }
+
+  if (lowerMsg.match(/\b(bye|goodbye|see you|cya)\b/)) {
+    return "Goodbye! Have a great day ahead. Feel free to ask if you need anything else.";
+  }
+
+  if (lowerMsg.match(/\b(thanks|thank you|thx|cool|great)\b/)) {
+    return "You're welcome! Happy to help.";
+  }
+  
+  if (lowerMsg.includes('who are you') || lowerMsg.includes('what are you')) {
+    return "I am Edumanage AI, your virtual assistant for the Student Management System. I can help you find information about your attendance, marks, library books, and more.";
+  }
+
+  if (lowerMsg.includes('what can you do') || lowerMsg.includes('help')) {
+    return "I can help you with:\n• Checking your attendance status\n• Viewing your exam marks and grades\n• Searching for library books\n• Information about subjects and courses\n• College notices and announcements\n• General administrative queries";
+  }
+  
+  // Academic - Attendance
+  if (lowerMsg.includes('attendance') || lowerMsg.includes('present') || lowerMsg.includes('absent')) {
+    return "You can check your detailed attendance records in the 'Attendance' section of your dashboard. We track daily attendance for all your subjects. You need at least 75% attendance to be eligible for exams.";
+  }
+  
+  // Academic - Marks & Exams
+  if (lowerMsg.includes('mark') || lowerMsg.includes('grade') || lowerMsg.includes('result') || lowerMsg.includes('score')) {
+    return "Your academic performance marks and grades are available in the 'Marks' tab. You can see your performance across different semesters and subjects there.";
+  }
+
+  if (lowerMsg.includes('exam') || lowerMsg.includes('test') || lowerMsg.includes('mid sem') || lowerMsg.includes('final')) {
+    return "Exam schedules and notices are usually posted in the 'Notices' section. For specific exam marks, please check the 'Marks' tab.";
+  }
+  
+  // Administrative
+  if (lowerMsg.includes('admin') || lowerMsg.includes('contact') || lowerMsg.includes('office') || lowerMsg.includes('principal')) {
+    return "For administrative queries, please contact the college administration office during working hours (9 AM - 5 PM). If you are an admin, you can manage students and courses from the Admin Dashboard.";
+  }
+  
+  if (lowerMsg.includes('fee') || lowerMsg.includes('payment') || lowerMsg.includes('dues')) {
+    return "For fee-related queries, please visit the Accounts Department. You can view your fee status in the student portal if enabled.";
+  }
+
+  // Library
+  if (lowerMsg.includes('library') || lowerMsg.includes('book') || lowerMsg.includes('issue') || lowerMsg.includes('return')) {
+    return "Our library system allows you to search for books and track your issued items. Check the 'Library' section to see book availability and your current issues.";
+  }
+  
+  // Courses
+  if (lowerMsg.includes('subject') || lowerMsg.includes('course') || lowerMsg.includes('syllabus')) {
+    return "You can view your enrolled subjects, syllabus details, and course information in the 'Subjects' section of your dashboard.";
+  }
+  
+  // Notices
+  if (lowerMsg.includes('notice') || lowerMsg.includes('announcement') || lowerMsg.includes('news') || lowerMsg.includes('event')) {
+    return "Important announcements, events, and notices are displayed on your main dashboard. Please check them regularly to stay updated.";
+  }
+
+  // Account
+  if (lowerMsg.includes('password') || lowerMsg.includes('login') || lowerMsg.includes('reset')) {
+    return "If you need to change your password, go to the Profile settings. For password resets, please contact the system administrator or use the 'Forgot Password' link if available.";
+  }
+
+  // Default Fallback
+  return `I understand you're asking about "${message}". \n\nI'm currently running in offline mode and can only answer standard queries about the system. \n\nEdumanage helps you with:\n• Tracking Attendance & Marks\n• Library Management\n• Subject Details\n• College Notices\n\nPlease check the relevant section in your dashboard for more details.`;
+}
+
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Initialize Gemini API
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Apply general rate limiting to all API routes
+  app.use("/api", apiLimiter);
+  
   // ========== CHATBOT ROUTE ==========
-  app.post("/api/chat", async (req, res) => {
+  app.post("/api/chat", chatbotLimiter, async (req, res) => {
+    let message = "";
+    let history = [];
+
     try {
-      const { message, history } = req.body;
+      // Safely access body
+      if (req.body) {
+        message = String(req.body.message || "");
+        history = Array.isArray(req.body.history) ? req.body.history : [];
+      }
 
       if (!message) {
         return res.status(400).json({ message: "Message is required" });
       }
 
+      // Check if API key is configured
       if (!process.env.GEMINI_API_KEY) {
-        return res.status(500).json({ message: "Gemini API key is not configured" });
+        console.log("Gemini API key missing, using local response");
+        return res.json({ response: getLocalResponse(message) });
       }
 
-      // Fallback to the most stable model name "gemini-pro" or "gemini-1.5-flash-latest"
-      // Based on error "gemini-1.5-flash is not found", it might be region restricted or the library version is old.
-      // Let's try "gemini-1.5-flash" again, but fallback to "gemini-pro" if needed.
-      // Actually, for google-generative-ai library, "gemini-pro" is the standard alias.
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      // Sanitize history: Ensure it starts with a user message
+      let sanitizedHistory = Array.isArray(history) ? [...history] : [];
+      
+      // Remove any internal system messages or errors from history if present
+      sanitizedHistory = sanitizedHistory.filter(msg => msg.role === 'user' || msg.role === 'model');
 
-      const chat = model.startChat({
-        history: history || [],
-        generationConfig: {
-          maxOutputTokens: 1000,
-          temperature: 0.7,
-        },
-      });
+      // Ensure the first message is from the user (Gemini requirement)
+      if (sanitizedHistory.length > 0 && sanitizedHistory[0].role === 'model') {
+        sanitizedHistory = sanitizedHistory.slice(1);
+      }
 
       // Add a system instruction prompt to guide the AI
       const systemInstruction = `You are Edumanage AI, a helpful and knowledgeable assistant for the College Student Management System.
@@ -80,14 +162,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Combine system instruction with user message for context
       const fullMessage = `${systemInstruction}\n\nUser Question: ${message}`;
 
-      const result = await chat.sendMessage(fullMessage);
-      const response = await result.response;
-      const text = response.text();
+      // --- PRIMARY ATTEMPT: gemini-2.0-flash ---
+      try {
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        
+        const chat = model.startChat({
+          history: sanitizedHistory,
+          generationConfig: {
+            maxOutputTokens: 500,
+            temperature: 0.7,
+          },
+        });
 
-      res.json({ response: text });
+        // Add timeout to prevent hanging requests
+        const result = await Promise.race([
+          chat.sendMessage(fullMessage),
+          new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error('Request timeout')), 20000)
+          )
+        ]);
+        
+        const response = await result.response;
+        const text = response.text();
+        return res.json({ response: text });
+
+      } catch (primaryError: any) {
+        console.warn(`Primary model (gemini-2.0-flash) failed: ${primaryError.message}. Retrying with fallback...`);
+        
+        // --- FALLBACK ATTEMPT 1: gemini-2.5-flash ---
+        try {
+           const fallbackModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+           
+           const chat = fallbackModel.startChat({
+             history: sanitizedHistory,
+             generationConfig: {
+               maxOutputTokens: 500,
+               temperature: 0.7,
+             },
+           });
+
+           const result = await Promise.race([
+             chat.sendMessage(fullMessage),
+             new Promise<never>((_, reject) => 
+               setTimeout(() => reject(new Error('Fallback 1 request timeout')), 20000)
+             )
+           ]);
+           
+           const response = await result.response;
+           const text = response.text();
+           return res.json({ response: text });
+
+        } catch (secondaryError: any) {
+           console.warn(`Secondary model (gemini-2.5-flash) failed: ${secondaryError.message}. Retrying with legacy...`);
+           
+           // --- FALLBACK ATTEMPT 2: gemini-2.0-flash-exp ---
+           try {
+             const legacyModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+             
+             const chat = legacyModel.startChat({
+               history: sanitizedHistory,
+               generationConfig: {
+                 maxOutputTokens: 500,
+                 temperature: 0.7,
+               },
+             });
+
+             const result = await Promise.race([
+               chat.sendMessage(fullMessage),
+               new Promise<never>((_, reject) => 
+                 setTimeout(() => reject(new Error('Legacy fallback request timeout')), 20000)
+               )
+             ]);
+             
+             const response = await result.response;
+             const text = response.text();
+             return res.json({ response: text });
+
+           } catch (tertiaryError: any) {
+              console.error(`All Gemini models failed. Last error: ${tertiaryError.message}`);
+              throw tertiaryError; // Throw to outer catch to trigger local response
+           }
+        }
+      }
+
     } catch (error: any) {
       console.error("Chatbot error:", error);
-      res.status(500).json({ message: "Failed to generate response", error: error.message });
+      
+      // If AI fails completely, fallback to local response
+      console.log(`AI request failed completely, falling back to local response`);
+      // Now 'message' is accessible here because it was defined outside the try block
+      const localResponse = getLocalResponse(message || ""); 
+      res.json({ response: localResponse });
     }
   });
 
@@ -101,9 +266,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create default admin
-      const hashedPassword = await bcrypt.hash("Knsgp2023", 10);
+      const defaultAdminPassword = process.env.DEFAULT_ADMIN_PASSWORD || "admin123";
+      const hashedPassword = await bcrypt.hash(defaultAdminPassword, 10);
       await storage.createAdmin({
-        name: "Md Kashif",
+        name: "Admin",
         password: hashedPassword,
         role: "super_admin",
         email: "admin@knsgp.ac.in",
@@ -114,8 +280,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true, 
         message: "Database initialized! Default admin created.",
         credentials: {
-          username: "Md Kashif",
-          password: "Knsgp2023 (Change this immediately!)"
+          username: "Admin",
+          password: "Check your environment variables for the default password"
         }
       });
     } catch (error: any) {
@@ -211,7 +377,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           for (let i = 1; i <= 50; i++) {
             const dept = i <= 20 ? "CSE" : (i <= 30 ? "CE" : "EE");
             const branchId = getBranchId(dept);
-            const student = await storage.createStudent({
+            await storage.createStudent({
               rollNo: `2023-${dept}-${i.toString().padStart(3, '0')}`,
               name: `Student ${i}`,
               password: hashedPassword,
@@ -219,9 +385,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               branchId: branchId,
               semester: 3
             });
-            allStudents.push(student);
           }
           console.log("[Seed] Created 50 dummy students");
+          // Refresh the students list to get the calculated fields
+          const refreshedStudents = await storage.getAllStudents(1000, 0);
+          allStudents.push(...refreshedStudents.data);
       }
 
       // Generate Stats for everyone
@@ -313,7 +481,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ========== AUTH ROUTES ==========
   
   // Login route
-  app.post("/api/login", async (req, res) => {
+  app.post("/api/login", authLimiter, async (req, res) => {
     try {
       const { username, password, role } = req.body;
 
@@ -416,16 +584,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        // Verify password
-        // First check if the password matches the stored hash
-        let isValid = await bcrypt.compare(trimmedPassword, student.password);
-        
-        // Fallback: check if password matches directly (for legacy/seeded data)
-        if (!isValid) {
-           // Only allow plaintext match if the stored password exactly matches the input
-           // This prevents the security issue where the name works as a password even after changing it
-           isValid = trimmedPassword === student.password;
-        }
+        // Verify password using bcrypt only
+        const isValid = await bcrypt.compare(trimmedPassword, student.password);
 
         if (!isValid) {
           const attempts = (student.failedLoginAttempts ?? 0) + 1;

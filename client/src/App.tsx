@@ -13,9 +13,10 @@ import SuperAdminLogin from "@/pages/SuperAdminLogin";
 import Chatbot from "@/components/common/Chatbot";
 
 import { ActiveProvider } from "@/contexts/ActiveContext";
+import ErrorBoundary from "@/components/common/ErrorBoundary";
 
 function App() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const [user, setUser] = useState<{ 
     role: 'admin' | 'student' | null; 
     id: number | null;
@@ -30,6 +31,7 @@ function App() {
     adminRole: null
   });
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [showSuperAdminLogin, setShowSuperAdminLogin] = useState(false);
 
   // Check for existing session on mount
   useEffect(() => {
@@ -95,54 +97,69 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ActiveProvider>
         <TooltipProvider>
-          <AnimatePresence mode="wait">
-            {user.role && <Chatbot />}
-            <motion.div
-              key={location}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3 }}
-              className="min-h-screen"
-            >
-              <Switch location={location}>
-                {/* Secret Super Admin Route */}
-                <Route path="/Knsgp2023-admin">
-                  {!user.role ? (
-                    <SuperAdminLogin onLogin={handleLogin} />
-                  ) : user.role === 'admin' && user.adminRole === 'super_admin' ? (
-                    <AdminDashboard 
-                      adminName={user.name!} 
-                      adminRole={user.adminRole} 
-                      onLogout={handleLogout} 
-                      initialSection="admins" 
-                      isSecretRoute={true}
-                    />
-                  ) : (
-                    <NotFound />
-                  )}
-                </Route>
-
-                {/* Default Route - Fallback for all other paths */}
-                <Route>
-                  {!user.role ? (
-                    <LoginPage onLogin={handleLogin} />
-                  ) : user.role === 'admin' ? (
-                    <AdminDashboard adminName={user.name!} adminRole={user.adminRole} onLogout={handleLogout} />
-                  ) : (
-                    <StudentDashboard 
-                      studentName={user.name!} 
-                      rollNo={user.rollNo!}
-                      studentId={user.id!}
-                      branchId={user.branchId}
-                      onLogout={handleLogout} 
-                    />
-                  )}
-                </Route>
-              </Switch>
-            </motion.div>
-          </AnimatePresence>
+          <ErrorBoundary>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={location}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
+                className="min-h-screen"
+              >
+                <Switch location={location}>
+                  {/* Super Admin Backdoor Route */}
+                  <Route path="/Knsgp2023-admin">
+                    {!user.role ? (
+                      <SuperAdminLogin 
+                        onLogin={handleLogin} 
+                        onBack={() => setLocation('/')} 
+                      />
+                    ) : user.role === 'admin' && user.adminRole === 'super_admin' ? (
+                      <AdminDashboard 
+                        adminName={user.name!} 
+                        adminRole={user.adminRole} 
+                        onLogout={handleLogout} 
+                        isSecretRoute={true}
+                      />
+                    ) : (
+                      <NotFound />
+                    )}
+                  </Route>
+                  
+                  {/* Default Route - Fallback for all other paths */}
+                  <Route>
+                    {!user.role ? (
+                      showSuperAdminLogin ? (
+                        <SuperAdminLogin 
+                          onLogin={handleLogin} 
+                          onBack={() => setShowSuperAdminLogin(false)} 
+                        />
+                      ) : (
+                        <LoginPage 
+                          onLogin={handleLogin} 
+                          showSuperAdmin={showSuperAdminLogin}
+                          onShowSuperAdmin={() => setShowSuperAdminLogin(true)}
+                        />
+                      )
+                    ) : user.role === 'admin' ? (
+                      <AdminDashboard adminName={user.name!} adminRole={user.adminRole} onLogout={handleLogout} />
+                    ) : (
+                      <StudentDashboard 
+                        studentName={user.name!} 
+                        rollNo={user.rollNo!}
+                        studentId={user.id!}
+                        branchId={user.branchId}
+                        onLogout={handleLogout} 
+                      />
+                    )}
+                  </Route>
+                </Switch>
+              </motion.div>
+            </AnimatePresence>
+          </ErrorBoundary>
           <Toaster />
+          {user.role && <Chatbot />}
         </TooltipProvider>
       </ActiveProvider>
     </QueryClientProvider>

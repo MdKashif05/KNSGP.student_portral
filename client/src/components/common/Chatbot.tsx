@@ -16,10 +16,27 @@ export default function Chatbot() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [hasSentMessage, setHasSentMessage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const handleToggleChat = () => {
+    const newOpenState = !isOpen;
+    setIsOpen(newOpenState);
+    
+    // Send welcome message when opening for the first time
+    if (newOpenState && !hasSentMessage && messages.length === 0) {
+      setTimeout(() => {
+        setMessages(prev => [...prev, {
+          role: "model",
+          parts: "Hello! I'm Edumanage AI, your college assistant. I can help you with information about the college, courses, schedules, and general questions. What would you like to know?"
+        }]);
+        setHasSentMessage(true);
+      }, 500);
+    }
   };
 
   useEffect(() => {
@@ -40,22 +57,55 @@ export default function Chatbot() {
     setIsLoading(true);
 
     try {
-      const response = await apiRequest("POST", "/api/chat", {
-        message: userMessage,
-        history: messages.map(m => ({
-          role: m.role,
-          parts: [{ text: m.parts }]
-        }))
+      // Use native fetch with timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: userMessage,
+          history: messages.map(m => ({
+            role: m.role,
+            parts: [{ text: m.parts }]
+          }))
+        }),
+        credentials: "include",
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Server error: ${response.status}`);
+      }
 
       const data = await response.json();
       
+      if (!data.response) {
+        throw new Error("Invalid response from server");
+      }
+      
       setMessages((prev) => [...prev, { role: "model", parts: data.response }]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Chat error:", error);
+      
+      // Enhanced error handling with user-friendly messages
+      let errorMessage = "I'm having trouble responding right now. Please try again in a moment.";
+      
+      if (error.message?.includes('network')) {
+        errorMessage = "Network connection issue. Please check your internet and try again.";
+      } else if (error.message?.includes('quota')) {
+        errorMessage = "I've reached my daily limit. Please try again tomorrow.";
+      } else if (error.message?.includes('timeout')) {
+        errorMessage = "Response is taking longer than expected. Please try again.";
+      }
+      
       setMessages((prev) => [
         ...prev, 
-        { role: "model", parts: "Sorry, I encountered an error. Please try again." }
+        { role: "model", parts: errorMessage }
       ]);
     } finally {
       setIsLoading(false);
@@ -72,11 +122,11 @@ export default function Chatbot() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ duration: 0.2 }}
-            className="w-[350px] sm:w-[400px]"
+            className="w-87.5 sm:w-100"
           >
-            <Card className="flex flex-col h-[500px] shadow-2xl border-primary/20 overflow-hidden">
+            <Card className="flex flex-col h-125 shadow-2xl border-primary/20 overflow-hidden">
               {/* Header */}
-              <div className="bg-gradient-to-r from-emerald-500 to-teal-600 p-4 flex items-center justify-between text-white shadow-md">
+              <div className="bg-linear-to-r from-emerald-500 to-teal-600 p-4 flex items-center justify-between text-white shadow-md">
                 <div className="flex items-center gap-3">
                   <div className="bg-white/20 p-2 rounded-full backdrop-blur-sm border border-white/10">
                     <Bot className="h-5 w-5" />
@@ -104,7 +154,7 @@ export default function Chatbot() {
                       <Bot className="h-8 w-8 text-emerald-600" />
                     </div>
                     <h4 className="font-semibold text-slate-800 mb-2">Hi! I'm Edumanage AI</h4>
-                    <p className="text-sm text-slate-500 max-w-[200px] leading-relaxed">
+                    <p className="text-sm text-slate-500 max-w-50 leading-relaxed">
                       I can help you with your studies, college info, or general questions.
                     </p>
                   </div>
@@ -129,7 +179,7 @@ export default function Chatbot() {
                       {msg.role === "user" ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
                     </div>
                     <div
-                      className={`relative px-4 py-2.5 max-w-[80%] text-sm shadow-sm ${
+                      className={`relative px-4 py-2.5 max-w-[80%] text-sm shadow-sm whitespace-pre-wrap ${
                         msg.role === "user"
                           ? "bg-slate-800 text-white rounded-2xl rounded-br-none"
                           : "bg-white text-slate-700 border border-slate-100 rounded-2xl rounded-bl-none"
@@ -197,7 +247,7 @@ export default function Chatbot() {
               className="absolute right-full mr-4 top-1/2 -translate-y-1/2 whitespace-nowrap bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-sm font-medium shadow-lg pointer-events-none"
             >
               Chat with us!
-              <div className="absolute right-[-6px] top-1/2 -translate-y-1/2 border-[6px] border-transparent border-l-emerald-500"></div>
+              <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 border-[6px] border-transparent border-l-emerald-500"></div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -209,7 +259,7 @@ export default function Chatbot() {
               ? "bg-muted text-muted-foreground hover:bg-muted/80 rotate-90" 
               : "bg-emerald-500 hover:bg-emerald-600 text-white hover:scale-110 animate-pulse-subtle"
           }`}
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={handleToggleChat}
         >
           {isOpen ? <X className="h-6 w-6" /> : <MessageCircle className="h-7 w-7" />}
         </Button>

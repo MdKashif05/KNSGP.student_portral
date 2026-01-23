@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "tailwindcss-animate";
 
 @theme {
   --color-border: hsl(var(--border));
@@ -34,6 +35,7 @@
 
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-gradient-x: gradient-x 15s ease infinite;
 
   @keyframes accordion-down {
     from { height: 0 }
@@ -42,6 +44,16 @@
   @keyframes accordion-up {
     from { height: var(--radix-accordion-content-height) }
     to { height: 0 }
+  }
+  @keyframes gradient-x {
+    0%, 100% {
+      background-size: 200% 200%;
+      background-position: left center;
+    }
+    50% {
+      background-size: 200% 200%;
+      background-position: right center;
+    }
   }
 }
 
@@ -132,7 +144,8 @@
 }
 
 .gradient-bg {
-  @apply bg-[conic-gradient(at_top_right,_var(--tw-gradient-stops))] from-indigo-100 via-slate-50 to-purple-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800;
+  background: conic-gradient(at top right, var(--tw-gradient-stops));
+  @apply from-indigo-100 via-slate-50 to-purple-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800;
 }
 
 .fade-in {
