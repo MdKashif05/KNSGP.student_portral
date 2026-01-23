@@ -16,9 +16,9 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-export const pool = new Pool({ 
+export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === "production" || process.env.DATABASE_URL.includes("neon.tech") ? { rejectUnauthorized: false } : undefined,
+  ssl: process.env.NODE_ENV === "production" || process.env.DATABASE_URL.includes("neon.tech") || process.env.DATABASE_URL.includes("supabase.com") ? { rejectUnauthorized: false } : undefined,
 });
 
 pool.on('error', (err) => {
