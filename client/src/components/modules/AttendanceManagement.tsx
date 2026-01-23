@@ -127,15 +127,22 @@ export default function AttendanceManagement({ department, branchId, batchId }: 
       // CRITICAL FIX: Ensure 'absent' status is preserved and not overwritten by default 'present'
       // If the student is in the map, use that status.
       // If NOT in the map (unlikely if fetched correctly, but possible for new students), default to 'present'.
-      const finalStatus = currentStatus !== undefined ? currentStatus : 'present';
+      // const finalStatus = currentStatus !== undefined ? currentStatus : 'present';
       
+      if (!currentStatus) return null;
+
       return {
         studentId: sId,
         subjectId: parseInt(selectedSubject),
         date: format(date, 'yyyy-MM-dd'),
-        status: finalStatus
+        status: currentStatus
       };
-    });
+    }).filter(Boolean);
+
+    if (records.length === 0) {
+      toast({ title: "Warning", description: "No attendance marked to save", variant: "destructive" });
+      return;
+    }
 
     // Debug: Log what we are saving
     const absentCount = records.filter((r: any) => r.status === 'absent').length;
