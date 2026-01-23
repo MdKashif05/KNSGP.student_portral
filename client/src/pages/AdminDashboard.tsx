@@ -82,22 +82,6 @@ export default function AdminDashboard({ adminName, adminRole, onLogout, initial
   };
 
   // Helpers to map display name to code used in DB
-  const deptCode = (name: string | null) => {
-    switch (name) {
-      case "Computer Science": return "CSE";
-      case "Computer Science & Engineering": return "CSE";
-      case "Electronics": return "ECE";
-      case "Electronics Engineering": return "ECE";
-      case "Mechanical": return "ME";
-      case "Mechanical Engineering": return "ME";
-      case "Civil":
-      case "Civil Engineering": return "CE";
-      case "Electrical": return "EE";
-      case "Electrical Engineering": return "EE";
-      default: return undefined;
-    }
-  };
-
   const getBranchIcon = (name: string) => {
     if (!name) return GraduationCap;
     const lowerName = name.toLowerCase();
@@ -182,13 +166,13 @@ export default function AdminDashboard({ adminName, adminRole, onLogout, initial
   // Fetch global analytics
   // Only fetch if we are in the right section AND if we have resolved the branch ID (if a department is selected)
   const { data: globalStats } = useQuery<any>({
-    queryKey: [`/api/analytics/global${activeBranchId ? `?branchId=${activeBranchId}` : '?'}`],
+    queryKey: [`/api/analytics/global${activeBranchId ? `?branchId=${activeBranchId}` : activeBatchId ? `?batchId=${activeBatchId}` : '?'}`],
     enabled: (activeSection === 'dashboard' || activeSection === 'reports' || activeSection === 'branch_home') && (!selectedDepartment || activeBranchId !== undefined),
   });
 
   // Fetch students (paginated)
   const { data: studentsResponse, refetch: refetchStudents } = useQuery<any>({
-    queryKey: [`/api/students?limit=${studentLimit}${selectedDepartment && deptCode(selectedDepartment) ? `&department=${deptCode(selectedDepartment)}` : ""}${activeBranchId ? `&branchId=${activeBranchId}` : ""}${activeBatchId ? `&batchId=${activeBatchId}` : ""}`],
+    queryKey: [`/api/students?limit=${studentLimit}${activeBranchId ? `&branchId=${activeBranchId}` : ""}${activeBatchId ? `&batchId=${activeBatchId}` : ""}`],
     enabled: activeSection === 'dashboard' || activeSection === 'students' || activeSection === 'reports' || activeSection === 'branch_home',
     staleTime: 0, // Ensure data is always fresh
     refetchOnWindowFocus: true,
@@ -200,7 +184,7 @@ export default function AdminDashboard({ adminName, adminRole, onLogout, initial
 
   // Fetch subjects
   const { data: subjects = [], refetch: refetchSubjects } = useQuery<any[]>({
-    queryKey: [`/api/subjects?${selectedDepartment && deptCode(selectedDepartment) ? `department=${deptCode(selectedDepartment)}&` : ""}${activeBranchId ? `branchId=${activeBranchId}` : ""}${activeBatchId ? `&batchId=${activeBatchId}` : ""}`],
+    queryKey: [`/api/subjects?${activeBranchId ? `branchId=${activeBranchId}` : ""}${activeBatchId ? `&batchId=${activeBatchId}` : ""}`],
     enabled: activeSection === 'dashboard' || activeSection === 'subjects' || activeSection === 'reports' || activeSection === 'branch_home',
   });
 
@@ -823,10 +807,10 @@ export default function AdminDashboard({ adminName, adminRole, onLogout, initial
         );
 
       case "attendance":
-        return <AttendanceManagement department={deptCode(selectedDepartment || null)} branchId={activeBranchId ?? undefined} batchId={activeBatchId ?? undefined} />;
+        return <AttendanceManagement branchId={activeBranchId ?? undefined} batchId={activeBatchId ?? undefined} />;
 
       case "marks":
-        return <MarksManagement department={deptCode(selectedDepartment || null)} branchId={activeBranchId ?? undefined} batchId={activeBatchId ?? undefined} />;
+        return <MarksManagement branchId={activeBranchId ?? undefined} batchId={activeBatchId ?? undefined} />;
 
       case "library":
         return (
