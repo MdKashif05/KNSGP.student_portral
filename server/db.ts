@@ -18,11 +18,20 @@ if (!process.env.DATABASE_URL) {
 
 // Determine if we need SSL based on the database URL
 const dbUrl = process.env.DATABASE_URL;
+// Clean the URL to remove sslmode parameters that might conflict with our explicit config
+const cleanDbUrl = dbUrl.replace(/[?&]sslmode=[^&]+/, "").replace(/\?$/, "");
+
 const isRemoteDB = dbUrl.includes("supabase.com") || dbUrl.includes("neon.tech") || dbUrl.includes("render.com") || dbUrl.includes("pooler.");
 const needsSSL = process.env.NODE_ENV === "production" || isRemoteDB;
 
+console.log(`[DB] Database Configuration:
+  - URL: ${cleanDbUrl.replace(/:[^:@]*@/, ":***@")}
+  - SSL Required: ${needsSSL}
+  - Remote DB: ${isRemoteDB}
+`);
+
 export const pool = new Pool({
-  connectionString: dbUrl,
+  connectionString: cleanDbUrl,
   ssl: needsSSL ? { rejectUnauthorized: false } : undefined,
 });
 
