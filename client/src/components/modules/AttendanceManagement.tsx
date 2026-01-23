@@ -68,9 +68,6 @@ export default function AttendanceManagement({ department, branchId, batchId }: 
         
         if (record) {
           newMap[sId] = record.status;
-        } else if (isTodayDate) {
-          // Only default to 'present' if it is TODAY and no record exists
-          newMap[sId] = 'present'; 
         }
         // For past dates with no record, we leave it undefined (Not Marked)
       });
